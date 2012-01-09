@@ -16,7 +16,7 @@ sub new {
         source_url => $source_url,
         cachefile  => $cachefile,
         cachetime  => defined($cachetime) ? $cachetime : $DEFAULT_CACHE_TIME,
-        splits     => [ ],
+        children   => [ ],
     }, $class;
 
     my $defsplit = RSS::Tee::_Split->_new($self, $default, $title);

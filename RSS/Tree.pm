@@ -1,17 +1,27 @@
+# TODO: Delete old items from cache
+# TODO: Perform node test before descending
+# TODO: Limit number of items
+# TODO: Somehow uncache feed/items orphaned by a changed URL
+
 package RSS::Tree;
 
 use Errno;
+use LWP::Simple qw($ua);
 use RSS::Tree::Item;
-use RSS::Tree::Node;
 use Try::Tiny ();
 use XML::RSS;
+
+use base qw(RSS::Tree::Node);
 use strict;
 
-our @ISA = qw(RSS::Tree::Node);
+
+$ua->agent("");
+
 
 sub new {
-    my ($class, $source, $name, $title, @opts) = @_;
+    my ($class, $source, $url, $name, $title, @opts) = @_;
     my $self = $class->SUPER::new($name, $title, @opts);
+    $self->{url}    = $url;
     $self->{source} = $source;
     return $self;
 }
@@ -41,10 +51,11 @@ sub run {
     while ($index < @$items) {
         my $item = $items->[$index];
         my $copy = { %$item };
-        my $wrapper = RSS::Tree::Item->new($copy);
+        my $wrapper = RSS::Tree::Item->new($self, $copy);
         my $node = $self->process($wrapper, $name);
         if ($node && $node->name eq $name) {
-            $item->{description} = $self->_get_description($node, $wrapper);
+            _set_content($item, $self->_get_content($node, $wrapper));
+            $self->postprocess_item($item);
             ++$index;
             defined $title or $title = $node->Title;
         } else {
@@ -55,8 +66,16 @@ sub run {
     $rss->{channel}{title} = $rss->{channel}{description} =
         defined $title ? $title : $name;
 
+    # $rss->{channel}{link} = $self->{url} . $name . '.pl';
+
     return $rss->as_string;
 
+}
+
+sub download {
+    my ($self, $url) = @_;
+    require RSS::Tree::HtmlDocument::Web;
+    return RSS::Tree::HtmlDocument::Web->new($url);
 }
 
 sub write_programs {
@@ -76,18 +95,19 @@ sub write_programs {
 
 }
 
-sub _get_description {
+sub _get_content {
     my ($self, $node, $item) = @_;
+
     return $self->_cache(
+        sub { _render($node, $item) },
         $self->{item_cache_seconds},
-        sub { $node->render($item) },
-        'items', $item->link
+        'items', $item->link || $item->guid
     );
+
 }
 
 sub _download_feed {
     my $self = shift;
-    require LWP::Simple;
     defined(my $content = LWP::Simple::get($self->{source}))
         or die "Failed to download RSS feed from $self->{source}";
     return $content;
@@ -96,39 +116,70 @@ sub _download_feed {
 sub _fetch_feed {
     my $self = shift;
     return $self->_cache(
-        $self->{feed_cache_seconds},
         sub { $self->_download_feed },
+        $self->{feed_cache_seconds},
         'feed'
     );
 }
 
 sub _cache {
-    my ($self, $duration, $generate, @keys) = @_;
+    my ($self, $generate, $duration, @keys) = @_;
     my $cache = $self->{cache};
 
     return $generate->() if !$cache || !defined $duration;
 
     $cache->lock_exclusive;
-    my $content;
 
-    Try::Tiny::try {
+    my $error;
+
+    my $content = Try::Tiny::try {
         my $hash = $cache;
         $hash = $hash->{$_} ||= { } for @keys;
         my $timestamp = $hash->{timestamp};
-        my $now = time();
+        my $now       = time();
 
         if (!defined $timestamp || $now - $timestamp >= $duration) {
             $hash->{content}   = $generate->();
             $hash->{timestamp} = $now;
         }
 
-        $content = $hash->{content};
+        $hash->{content};
 
+    } Try::Tiny::catch {
+        $error = $_;
     } Try::Tiny::finally {
         $cache->unlock;
     };
 
+    die $error if $error;
+
     return $content;
+
+}
+
+sub _render {
+    my ($node, $item) = @_;
+    my @repr = $node->render($item) or return;
+
+    return join "", map {
+        UNIVERSAL::isa($_, 'HTML::Element')
+            ? do { $_->attr('id', undef); $_->as_HTML("", undef, { }) }
+            : $_
+    } @repr;
+
+}
+
+sub _set_content {
+    my ($item, $content) = @_;
+    return if !defined $content;
+
+    if (exists $item->{content} &&
+        ref $item->{content} eq 'HASH' &&
+        exists $item->{content}{encoded}) {
+        $item->{content}{encoded} = $content;
+    } else {
+        $item->{description} = $content;
+    }
 
 }
 

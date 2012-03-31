@@ -1,11 +1,12 @@
 package RSS::Tree::Item;
 
+use URI;
 use strict;
 
 
 sub new {
-    my ($class, $item) = @_;
-    bless { item => $item }, $class;
+    my ($class, $parent, $item) = @_;
+    bless { parent => $parent, item => $item }, $class;
 }
 
 sub title {
@@ -16,99 +17,78 @@ sub link {
     return shift->{item}{link};
 }
 
+sub guid {
+    return shift->{item}{guid};
+}
+
 sub description {
     return shift->{item}{description};
+}
+
+sub author {
+    return shift->{item}{author};
+}
+
+sub _uri {
+    my $self = shift;
+    return $self->{parent}->uri_for($self);
 }
 
 sub uri {
     my $self = shift;
     require URI;
-    return @_ ? URI->new_abs($_[0], $self->link) : URI->new($self->link);
+    return @_ ? URI->new_abs($_[0], $self->_uri) : URI->new($self->_uri);
+}
+
+sub absolutize {
+    my ($self, $element, @attr) = @_;
+
+    my @uri = map {
+        my $uri = $self->uri($element->attr($_));
+        $element->attr($_, $uri->as_string);
+        $uri;
+    } @attr;
+
+    return wantarray ? @uri : $uri[0];
+
 }
 
 sub body {
     my $self = shift;
-    return RSS::Tree::Item::_HtmlTree::Static->new($self->description);
+    return exists $self->{body}
+        ? $self->{body}
+        : ($self->{body} = $self->_static($self->description));
 }
 
 sub page {
     my $self = shift;
-    return RSS::Tree::Item::_HtmlTree::Net->new($self->link);
-}
-
-{
-
-package RSS::Tree::Item::_HtmlTree;
-
-use overload '""' => 'content', fallback => 1;
-
-sub new {
-    my $class = shift;
-    bless { }, $class;
+    return exists $self->{page}
+        ? $self->{page}
+        : ($self->{page} = $self->_web($self->_uri));
 }
 
 sub content {
     my $self = shift;
     return exists $self->{content}
         ? $self->{content}
-        : ($self->{content} = $self->_get_content);
+        : do {
+            my $content = $self->{item}{content};
+            $content = $content->{encoded}
+                if ref $content eq 'HASH' && exists $content->{encoded};
+            $self->{content} = $self->_static($content);
+        };
 }
 
-sub tree {
-    my $self = shift;
-    require HTML::TreeBuilder::XPath;
-    return $self->{tree} ||=
-        HTML::TreeBuilder::XPath->new_from_content($self->content);
+sub _static {
+    my ($self, $content) = @_;
+    require RSS::Tree::HtmlDocument::Static;
+    return RSS::Tree::HtmlDocument::Static->new($self->uri, $content);
 }
 
-sub findnodes {
-    my ($self, $path) = @_;
-    return $self->tree->findnodes($path);
-}
-
-sub findvalue {
-    my ($self, $path) = @_;
-    return $self->tree->findvalue($path);
-}
-
-}
-
-{
-
-package RSS::Tree::Item::_HtmlTree::Static;
-
-our @ISA = qw(RSS::Tree::Item::_HtmlTree);
-
-sub new {
-    my ($class, $content) = @_;
-    my $self = $class->SUPER::new;
-    $self->{content} = $content;
-    return $self;
-}
-
-}
-
-{
-
-package RSS::Tree::Item::_HtmlTree::Net;
-
-our @ISA = qw(RSS::Tree::Item::_HtmlTree);
-
-sub new {
-    my ($class, $url) = @_;
-    my $self = $class->SUPER::new;
-    $self->{url} = $url;
-    return $self;
-}
-
-sub _get_content {
-    my $self = shift;
-    require LWP::Simple;
-    defined(my $content = LWP::Simple::get($self->{url}))
-        or die "Failed to download URL $self->{url}\n";
-    return $content;
-}
-
+sub _web {
+    my ($self, $url) = @_;
+    require RSS::Tree::HtmlDocument::Web;
+    return RSS::Tree::HtmlDocument::Web->new($self->uri($url));
 }
 
 1;

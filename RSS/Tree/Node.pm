@@ -1,6 +1,7 @@
 package RSS::Tree::Node;
 
 use Carp;
+use HTML::Element;
 use strict;
 
 sub new {
@@ -29,14 +30,8 @@ sub Title {
 }
 
 sub add {
-    my ($self, $child) = @_;
-    push @{ $self->{children} }, $child;
-    return $self;
-}
-
-sub add_to {
-    my ($self, $parent) = @_;
-    $parent->add($self);
+    my $self = shift;
+    push @{ $self->{children} }, @_;
     return $self;
 }
 
@@ -51,9 +46,18 @@ sub process {
     return 0;
 }
 
-sub title {
+sub match_title {
     my ($self, $regex) = @_;
     $self->{test} = eval 'sub { _trim($_[0]->title) =~ /$regex/o }';
+    die $@ if $@;
+    return $self;
+}
+
+*title = *match_title;  # temporarily
+
+sub author {
+    my ($self, $regex) = @_;
+    $self->{test} = eval 'sub { _trim($_[0]->author) =~ /$regex/o }';
     return $self;
 }
 
@@ -65,6 +69,21 @@ sub test {
 sub render {
     my ($self, $item) = @_;
     return $item->body;
+}
+
+sub uri_for {
+    my ($self, $item) = @_;
+    return $item->link;
+}
+
+sub postprocess_item {
+    my ($self, $item) = @_;
+    delete $item->{guid};
+}
+
+sub new_element {
+    my $self = shift;
+    return HTML::Element->new_from_lol([ @_ ]);
 }
 
 sub _children {

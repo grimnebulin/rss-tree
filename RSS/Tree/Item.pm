@@ -79,6 +79,14 @@ sub content {
         };
 }
 
+sub findnodes {
+    my ($self, $context, $path, @classes) = @_;
+    require RSS::Tree::HtmlDocument;
+    return $context->findnodes(
+        RSS::Tree::HtmlDocument::format_path($path, @classes)
+    );
+}
+
 sub _static {
     my ($self, $content) = @_;
     require RSS::Tree::HtmlDocument::Static;

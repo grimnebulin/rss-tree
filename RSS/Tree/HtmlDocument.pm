@@ -60,15 +60,20 @@ sub _render_tree {
     return join "", map { $_->as_HTML("", undef, $tags) } $tree->guts;
 }
 
-sub _path {
+sub format_path {
     my ($path, @classes) = @_;
-    return @classes ? sprintf($path, map _has_class($_), @classes) : $path;
+    return sprintf $path, map _has_class($_), @classes;
 }
 
 sub _has_class {
     my $class = shift;
     return sprintf 'contains(concat(" ",normalize-space(@class)," ")," %s ")',
                    $class;
+}
+
+sub _path {
+    my ($path, @classes) = @_;
+    return @classes ? format_path($path, @classes) : $path;
 }
 
 

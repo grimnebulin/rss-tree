@@ -5,6 +5,7 @@
 
 package RSS::Tree;
 
+use Encode ();
 use Errno;
 use LWP::Simple qw($ua);
 use RSS::Tree::Item;
@@ -34,7 +35,7 @@ sub set_cache {
     mkdir $dir or $!{EEXIST}
         or die "Failed to create cache directory $dir: $!\n";
     require DBM::Deep;
-    $self->{cache} = DBM::Deep->new("$dir/$self->{name}");
+    my $cache = $self->{cache} = DBM::Deep->new("$dir/$self->{name}");
     $self->{feed_cache_seconds} = $opt{feed};
     $self->{item_cache_seconds} = $opt{items};
     return $self;
@@ -43,7 +44,7 @@ sub set_cache {
 sub run {
     my ($self, $name) = @_;
     my $cache = $self->{cache};
-    my $rss   = XML::RSS->new->parse($self->_fetch_feed);
+    my $rss = XML::RSS->new->parse($self->_fetch_feed);
     my $items = $rss->{items};
     my $index = 0;
     my $title;
@@ -128,7 +129,12 @@ sub _cache {
 
     return $generate->() if !$cache || !defined $duration;
 
-    $cache->lock_exclusive;
+    # Different versions of DBM::Deep do this differently, apparently...
+    if ($cache->can('lock_exclusive')) {
+        $cache->lock_exclusive;
+    } else {
+        $cache->lock(DBM::Deep::LOCK_EX());
+    }
 
     my $error;
 
@@ -137,13 +143,17 @@ sub _cache {
         $hash = $hash->{$_} ||= { } for @keys;
         my $timestamp = $hash->{timestamp};
         my $now       = time();
+        my $content;
 
         if (!defined $timestamp || $now - $timestamp >= $duration) {
-            $hash->{content}   = $generate->();
+            $content           = $generate->();
+            $hash->{content}   = Encode::encode_utf8($content);
             $hash->{timestamp} = $now;
+        } else {
+            $content = Encode::decode_utf8($hash->{content});
         }
 
-        $hash->{content};
+        $content;
 
     } Try::Tiny::catch {
         $error = $_;

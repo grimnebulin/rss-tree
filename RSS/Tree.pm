@@ -32,14 +32,13 @@ sub new {
 
     my $self = $class->SUPER::new($param->('name', 'title'));
 
-    defined($self->{feed} = $param->('feed'))
-        or die "No RSS feed defined for class $class\n";
+    $self->{feed} = $param->('feed');
 
     $self->{cache} = RSS::Tree::Cache->new(
         $self, $param->('cache_dir', 'feed_cache_seconds', 'item_cache_seconds')
     );
 
-    $self->{agent} = LWP::UserAgent->new(agent => $param->('agent_id'));
+    $self->{agent_id} = $param->('agent_id');
 
     $self->init;
 
@@ -120,18 +119,25 @@ sub download {
 
 sub write_programs {
     my ($self, %opt) = @_;
-    $self->_write_program(ref $self, @opt{'use'});
+    $self->_write_program(ref $self, exists $opt{'use'} ? $opt{'use'} : ());
+}
+
+sub _agent {
+    my $self = shift;
+    return $self->{agent} ||= LWP::UserAgent->new($self->{agent_id});
 }
 
 sub _download {
     my ($self, $url) = @_;
-    my $response = $self->{agent}->get($url);
+    my $response = $self->_agent->get($url);
     return if !$response->is_success;
     return $response->decoded_content;
 }
 
 sub _download_feed {
     my $self = shift;
+    defined $self->{feed}
+        or die "No RSS feed defined for class ", ref $self, "\n";
     defined(my $content = $self->_download($self->{feed}))
         or die "Failed to download RSS feed from $self->{feed}\n";
     return $content;

@@ -124,7 +124,7 @@ sub write_programs {
 
 sub _agent {
     my $self = shift;
-    return $self->{agent} ||= LWP::UserAgent->new($self->{agent_id});
+    return $self->{agent} ||= LWP::UserAgent->new(agent => $self->{agent_id});
 }
 
 sub _download {

@@ -64,7 +64,11 @@ sub absolutize {
 sub _render_tree {
     my $tree = shift;
     my $tags = { };
-    return join "", map { $_->as_HTML("", undef, $tags) } $tree->guts;
+    return join "", map {
+        UNIVERSAL::isa($_, 'HTML::Element')
+            ? $_->as_HTML("", undef, $tags)
+            : $_
+    } $tree->guts;
 }
 
 sub format_path {

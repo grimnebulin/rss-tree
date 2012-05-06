@@ -6,8 +6,7 @@ use strict;
 
 sub _get_content {
     my $self = shift;
-    require LWP::Simple;
-    defined(my $content = LWP::Simple::get($self->{uri}))
+    defined(my $content = $self->{downloader}->_download($self->{uri}))
         or die "Failed to download URL $self->{url}\n";
     return $content;
 }

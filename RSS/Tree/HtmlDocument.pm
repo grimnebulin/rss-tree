@@ -7,8 +7,13 @@ use strict;
 
 
 sub new {
-    my ($class, $uri, @pairs) = @_;
-    bless { uri => $uri, exposed => undef, @pairs }, $class;
+    my ($class, $uri, $downloader, $content) = @_;
+    bless {
+        uri        => $uri,
+        downloader => $downloader,
+        exposed    => undef,
+        defined $content ? (content => $content) : (),
+    }, $class;
 }
 
 sub content {
@@ -45,7 +50,9 @@ sub follow {
     my $self = shift;
     my $url = $self->findvalue(@_) or return;
     require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new(URI->new_abs($url, $self->{uri}));
+    return RSS::Tree::HtmlDocument::Web->new(
+        URI->new_abs($url, $self->{uri}), $self->{downloader}
+    );
 }
 
 sub absolutize {

@@ -5,49 +5,88 @@
 
 package RSS::Tree;
 
-use Encode ();
 use Errno;
-use LWP::Simple qw($ua);
+use LWP::UserAgent;
+use RSS::Tree::Cache;
 use RSS::Tree::Item;
-use Try::Tiny ();
 use XML::RSS;
 
 use base qw(RSS::Tree::Node);
 use strict;
 
 
-$ua->agent("");
+my $DEFAULT_ITEM_CACHE_SECONDS = 60 * 60 * 24;
+
+my $DEFAULT_FEED_CACHE_SECONDS = 60 * 5;
 
 
 sub new {
-    my ($class, $source, $url, $name, $title, @opts) = @_;
-    my $self = $class->SUPER::new($name, $title, @opts);
-    $self->{url}    = $url;
-    $self->{source} = $source;
+    my ($class, %param) = @_;
+
+    my $param = sub {
+        my @value = map {
+            exists $param{$_} ? $param{$_} : do { my $uc = uc; $class->$uc() }
+        } @_;
+        wantarray ? @value : $value[0];
+    };
+
+    my $self = $class->SUPER::new($param->('name', 'title'));
+
+    defined($self->{feed} = $param->('feed'))
+        or die "No RSS feed defined for class $class\n";
+
+    $self->{cache} = RSS::Tree::Cache->new(
+        $self, $param->('cache_dir', 'feed_cache_seconds', 'item_cache_seconds')
+    );
+
+    $self->{agent} = LWP::UserAgent->new(agent => $param->('agent_id'));
+
+    $self->init;
+
     return $self;
+
 }
 
-sub set_cache {
-    my ($self, %opt) = @_;
-    my $dir = $opt{dir};
-    # TODO: die (?) if cache already set
-    # TODO: die if name is undefined
-    mkdir $dir or $!{EEXIST}
-        or die "Failed to create cache directory $dir: $!\n";
-    require DBM::Deep;
-    my $cache = $self->{cache} = DBM::Deep->new("$dir/$self->{name}");
-    $self->{feed_cache_seconds} = $opt{feed};
-    $self->{item_cache_seconds} = $opt{items};
-    return $self;
+sub init {
+    # No-op.  Subclasses may override this to initialize themselves.
+}
+
+sub NAME {
+    undef;
+}
+
+sub TITLE {
+    undef;
+}
+
+sub FEED {
+    undef;
+}
+
+sub AGENT_ID {
+    return "";
+}
+
+sub CACHE_DIR {
+    return $ENV{RSS_TREE_CACHE_DIR};
+}
+
+sub ITEM_CACHE_SECONDS {
+    return $DEFAULT_ITEM_CACHE_SECONDS;
+}
+
+sub FEED_CACHE_SECONDS {
+    return $DEFAULT_FEED_CACHE_SECONDS;
 }
 
 sub run {
     my ($self, $name) = @_;
-    my $cache = $self->{cache};
-    my $rss = XML::RSS->new->parse($self->_fetch_feed);
+    my $rss   = XML::RSS->new->parse($self->{cache}->cache_feed);
     my $items = $rss->{items};
     my $index = 0;
     my $title;
+
+    defined $name or $name = $self->name;
 
     while ($index < @$items) {
         my $item = $items->[$index];
@@ -55,10 +94,10 @@ sub run {
         my $wrapper = RSS::Tree::Item->new($self, $copy);
         my $node = $self->process($wrapper, $name);
         if ($node && $node->name eq $name) {
-            _set_content($item, $self->_get_content($node, $wrapper));
+            _set_content($item, $self->{cache}->cache_item($node, $wrapper));
             $self->postprocess_item($item);
             ++$index;
-            defined $title or $title = $node->Title;
+            defined $title or $title = $node->title;
         } else {
             splice @$items, $index, 1;
         }
@@ -76,107 +115,26 @@ sub run {
 sub download {
     my ($self, $url) = @_;
     require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new($url);
+    return RSS::Tree::HtmlDocument::Web->new($url, $self);
 }
 
 sub write_programs {
     my ($self, %opt) = @_;
-    my $prelude;
-
-    if (exists $opt{prelude}) {
-        $prelude = $opt{prelude};
-    } elsif (exists $opt{prelude_file}) {
-        open my $fh, '<', $opt{prelude_file}
-            or die "Failed to open prelude file $opt{prelude_file}: $!\n";
-        $prelude = do { local $/; <$fh> };
-        close $fh;
-    }
-
-    $self->_write_program(ref $self, $prelude);
-
+    $self->_write_program(ref $self, @opt{'use'});
 }
 
-sub _get_content {
-    my ($self, $node, $item) = @_;
-
-    return $self->_cache(
-        sub { _render($node, $item) },
-        $self->{item_cache_seconds},
-        'items', $item->link || $item->guid
-    );
-
+sub _download {
+    my ($self, $url) = @_;
+    my $response = $self->{agent}->get($url);
+    return if !$response->is_success;
+    return $response->decoded_content;
 }
 
 sub _download_feed {
     my $self = shift;
-    defined(my $content = LWP::Simple::get($self->{source}))
-        or die "Failed to download RSS feed from $self->{source}";
+    defined(my $content = $self->_download($self->{feed}))
+        or die "Failed to download RSS feed from $self->{feed}\n";
     return $content;
-}
-
-sub _fetch_feed {
-    my $self = shift;
-    return $self->_cache(
-        sub { $self->_download_feed },
-        $self->{feed_cache_seconds},
-        'feed'
-    );
-}
-
-sub _cache {
-    my ($self, $generate, $duration, @keys) = @_;
-    my $cache = $self->{cache};
-
-    return $generate->() if !$cache || !defined $duration;
-
-    # Different versions of DBM::Deep do this differently, apparently...
-    if ($cache->can('lock_exclusive')) {
-        $cache->lock_exclusive;
-    } else {
-        $cache->lock(DBM::Deep::LOCK_EX());
-    }
-
-    my $error;
-
-    my $content = Try::Tiny::try {
-        my $hash = $cache;
-        $hash = $hash->{$_} ||= { } for @keys;
-        my $timestamp = $hash->{timestamp};
-        my $now       = time();
-        my $content;
-
-        if (!defined $timestamp || $now - $timestamp >= $duration) {
-            $content           = $generate->();
-            $hash->{content}   = Encode::encode_utf8($content);
-            $hash->{timestamp} = $now;
-        } else {
-            $content = Encode::decode_utf8($hash->{content});
-        }
-
-        $content;
-
-    } Try::Tiny::catch {
-        $error = $_;
-    } Try::Tiny::finally {
-        $cache->unlock;
-    };
-
-    die $error if $error;
-
-    return $content;
-
-}
-
-sub _render {
-    my ($node, $item) = @_;
-    my @repr = $node->render($item) or return;
-
-    return join "", map {
-        UNIVERSAL::isa($_, 'HTML::Element')
-            ? do { $_->attr('id', undef); $_->as_HTML("", undef, { }) }
-            : $_
-    } @repr;
-
 }
 
 sub _set_content {

@@ -90,13 +90,17 @@ sub findnodes {
 sub _static {
     my ($self, $content) = @_;
     require RSS::Tree::HtmlDocument::Static;
-    return RSS::Tree::HtmlDocument::Static->new($self->uri, $content);
+    return RSS::Tree::HtmlDocument::Static->new(
+        $self->uri, $self->{parent}, $content
+    );
 }
 
 sub _web {
     my ($self, $url) = @_;
     require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new($self->uri($url));
+    return RSS::Tree::HtmlDocument::Web->new(
+        $self->uri($url), $self->{parent}
+    );
 }
 
 1;

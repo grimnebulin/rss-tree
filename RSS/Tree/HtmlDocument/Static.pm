@@ -5,8 +5,8 @@ use strict;
 
 
 sub new {
-    my ($class, $uri, $content) = @_;
-    return $class->SUPER::new($uri, content => $content);
+    my ($class, $uri, $downloader, $content) = @_;
+    return $class->SUPER::new($uri, $downloader, $content);
 }
 
 

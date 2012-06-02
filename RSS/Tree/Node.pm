@@ -64,7 +64,7 @@ sub test {
 
 sub render {
     my ($self, $item) = @_;
-    return $item->body;
+    return $item->description;
 }
 
 sub uri_for {
@@ -72,15 +72,18 @@ sub uri_for {
     return $item->link;
 }
 
-sub postprocess_item {
-    my ($self, $item) = @_;
-    delete $item->{guid};
-}
-
 sub new_element {
     my $self = shift;
     require HTML::Element;
     return HTML::Element->new_from_lol([ @_ ]);
+}
+
+sub findnodes {
+    my ($self, $context, $path, @classes) = @_;
+    require RSS::Tree::HtmlDocument;
+    return $context->findnodes(
+        RSS::Tree::HtmlDocument::_format_path($path, @classes)
+    );
 }
 
 sub _children {
@@ -120,3 +123,15 @@ sub _trim {
 
 
 1;
+
+__END__
+
+=head1 NAME
+
+RSS::Tree::Node - nodes in an RSS::Tree tree
+
+=head1 SYNOPSIS
+
+    package MyNode;
+    use base qw(RSS::Tree::Node);
+

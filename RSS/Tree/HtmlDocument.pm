@@ -2,7 +2,7 @@
 package RSS::Tree::HtmlDocument;
 
 use URI;
-use overload '""' => 'as_str', fallback => 1;
+use overload '""' => '_as_str', fallback => 1;
 use strict;
 
 
@@ -12,53 +12,46 @@ sub new {
         uri        => $uri,
         downloader => $downloader,
         exposed    => undef,
-        defined $content ? (content => $content) : (),
+        @_ >= 4 ? (content => $content) : (),
     }, $class;
-}
-
-sub content {
-    my $self = shift;
-    return exists $self->{content}
-        ? $self->{content}
-        : ($self->{content} = $self->_get_content);
-}
-
-sub tree {
-    my $self = shift;
-    require HTML::TreeBuilder::XPath;
-    return $self->{tree} ||=
-        HTML::TreeBuilder::XPath->new_from_content($self->content);
-}
-
-sub as_str {
-    my $self = shift;
-    return $self->{exposed} ? _render_tree($self->tree) : $self->content;
-}
-
-sub findvalue {
-    my $self = shift;
-    return $self->tree->findvalue(_path(@_));
 }
 
 sub findnodes {
     my $self = shift;
     $self->{exposed} = 1;
-    return $self->tree->findnodes(_path(@_));
+    return $self->_tree->findnodes(_path(@_));
 }
 
-sub follow {
+sub findvalue {
     my $self = shift;
-    my $url = $self->findvalue(@_) or return;
+    return $self->_tree->findvalue(_path(@_));
+}
+
+sub open {
+    my ($self, $url) = @_;
     require RSS::Tree::HtmlDocument::Web;
     return RSS::Tree::HtmlDocument::Web->new(
         URI->new_abs($url, $self->{uri}), $self->{downloader}
     );
 }
 
-sub absolutize {
-    my ($self, $element, $attr) = @_;
-    $element->attr($attr, URI->new_abs($element->attr($attr), $self->{uri}));
-    return $element;
+sub _content {
+    my $self = shift;
+    return exists $self->{content}
+        ? $self->{content}
+        : ($self->{content} = $self->_get_content);
+}
+
+sub _tree {
+    my $self = shift;
+    require HTML::TreeBuilder::XPath;
+    return $self->{tree} ||=
+        HTML::TreeBuilder::XPath->new_from_content($self->_content);
+}
+
+sub _as_str {
+    my $self = shift;
+    return $self->{exposed} ? _render_tree($self->_tree) : $self->_content;
 }
 
 sub _render_tree {
@@ -71,7 +64,7 @@ sub _render_tree {
     } $tree->guts;
 }
 
-sub format_path {
+sub _format_path {
     my ($path, @classes) = @_;
     return sprintf $path, map _has_class($_), @classes;
 }
@@ -84,8 +77,117 @@ sub _has_class {
 
 sub _path {
     my ($path, @classes) = @_;
-    return @classes ? format_path($path, @classes) : $path;
+    return @classes ? _format_path($path, @classes) : $path;
 }
 
 
 1;
+
+__END__
+
+=head1 NAME
+
+RSS::Tree::HtmlDocument - Wrapper for an HTML document
+
+=head1 SYNOPSIS
+
+    my @paragraphs = $document->findnodes('//p');
+
+    my @summaries = $document->findnodes('//div[%s]', 'summary');
+
+    my $href = $document->findvalue('//a[@id="nextpage"]/@href');
+
+    my $id = $document->findvalue('//p[%s or %s]/@id', 'header', 'heading');
+
+    print "My document: $document";  # stringification
+
+=head1 DESCRIPTION
+
+A C<RSS::Tree::HtmlDocument> object wraps an HTML fragment which is
+parsed on demand into a tree by the C<HTML::TreeBuilder::XPath>
+module, and provides views into the document tree via enhanced
+versions of that class's C<findnodes> and C<findvalue> methods.
+
+Objects of this class are not meant to be instantiated directly by
+client code, so the class's constructor is not documented here.
+
+=head1 METHODS
+
+=over 4
+
+=item findnodes($xpath [, @classes ])
+
+This method causes the enclosed HTML fragment to be parsed into a tree
+of nodes by the C<HTML::TreeBuilder::XPath> class, if it has not
+already been so parsed, and forwards the given XPath expression to the
+C<findnodes> method of the tree's root node; see that class's
+documentation for details.  The scalar or list context of the call to
+this method is propagated to the root node's C<findnodes> method.
+
+In dealing with HTML, one often wants to select nodes whose C<class>
+attribute contains a given word.  Doing this properly requires an
+inconveniently lengthy XPath test:
+
+    contains(concat(" ",normalize-space(@class)," ")," desired-class ")
+
+To relieve clients of the job of writing this test over and over,
+C<"%s"> character sequences in the XPath expression are expanded into
+instances of this test if additional arguments are supplied to this
+method.  Each additional argument is expanded into the above string,
+where the argument's value replaces C<"desired-class">, and C<"%s">
+sequences in C<$xpath> are replaced with these strings in the order
+that they occur.  For example, the first argument in this call:
+
+    $document->findnodes('//div[%s]/div[%s]', 'header', 'subheader')
+
+...is expanded into the following XPath expression:
+
+    //div[contains(concat(" ",normalize-space(@class)," ")," header ")]/
+      div[contains(concat(" ",normalize-space(@class)," ")," subheader ")]
+
+This substitution is performed by a simple call to C<sprintf>, so any
+extra arguments are discarded, and any extra C<"%s"> sequences are
+replaced by the empty string.
+
+=item findvalue($xpath [, @classes })
+
+This method forwards the given XPath expression to the C<findvalue>
+method of the wrapped document tree's root node.  C<"%s"> sequences
+within C<$xpath> are expanded into class-test strings just as
+described above for the C<findnodes> method, if more than one argument
+is passed to this method.
+
+=back
+
+This class provides convenient stringification logic.  Until the
+C<findnodes> method is called, an object of this class stringifies to
+exactly the HTML text that it was initialized with.  The C<findnodes>
+method exposes the tree structure of the wrapped HTML fragment; using
+the returned nodes, client code is able to add nodes to tree and
+delete and rearrange existing nodes.  The stringification of this
+object is intended to reflect such changes, and so after the
+C<findnodes> method has been called, the object stringifies to the
+concatenation of all of the nodes returned by the tree's C<guts>
+method (see C<HTML::TreeBuilder::XPath>).  C<HTML::Element> objects in
+this node list are stringified by calling the C<as_HTML> method; text
+nodes are concatenated as-is.
+
+For example, consider an object C<$doc> of this class that wraps the
+following HTML fragment:
+ 
+    <div id='main'>
+      <span id='one'>One</span>
+      <span id='two'>Two</span>
+    </div>
+
+Then the following code:
+
+    $doc->findnodes('//span[@id="one"]')->shift->detach;
+    print $doc;
+
+...will print "<div><span id='two'>Two</span></div>" (possibly modulo
+whitespace).
+
+=head1 SEE ALSO
+
+L<RSS::Tree::HtmlDocument::Web>

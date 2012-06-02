@@ -9,20 +9,27 @@ use strict;
 
 sub new {
     my ($class, $parent, $dir, $feed_seconds, $item_seconds) = @_;
+
     $dir = do { require Cwd; Cwd::abs_path($dir) } if defined $dir;
+
     my $self = bless {
         file         => $parent->name,
         dir          => $dir,
         feed_seconds => $feed_seconds,
         item_seconds => $item_seconds,
     }, $class;
+
     Scalar::Util::weaken($self->{parent} = $parent);
+
     return $self;
+
 }
 
 sub _dbm {
     my $self = shift;
-    return $self->{dbm} ||= $self->_make_dbm;
+    return exists $self->{dbm}
+        ? $self->{dbm}
+        : ($self->{dbm} = $self->_make_dbm);
 }
 
 sub _make_dbm {
@@ -42,11 +49,13 @@ sub _make_dbm {
     _lock_dbm($dbm);
 
     delete $dbm->{feed}
-        if $dbm->{feed} && $now - $dbm->{feed}{timestamp} > $self->{feed_seconds};
+        if $dbm->{feed}
+        && $now - $dbm->{feed}{timestamp} > $self->{feed_seconds};
 
     if (my $items = $dbm->{items}) {
         while (my ($id, $data) = each %$items) {
-            delete $items->{$id} if $now - $data->{timestamp} > $self->{item_seconds};
+            delete $items->{$id}
+                if $now - $data->{timestamp} > $self->{item_seconds};
         }
     }
 

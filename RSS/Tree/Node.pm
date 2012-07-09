@@ -105,7 +105,7 @@ sub _write_program {
         or die "Can't open file $filename for writing: $!\n";
 
     print $fh "#!/usr/local/bin/perl -CO\n",
-              "#\n",
+              "# <your extra initialization here>\n",
               "use ", @use_class ? $use_class[0] : $tree_class, ";\n",
               "use strict;\n\n",
               "print qq(Content-Type: text/xml\\n\\n), ",

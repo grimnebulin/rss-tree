@@ -102,7 +102,7 @@ sub _cache {
 
         if (!defined $timestamp || $now - $timestamp >= $duration) {
             $content           = $generate->();
-            $hash->{content}   = Encode::encode_utf8($content // "");
+            $hash->{content}   = Encode::encode_utf8(defined $content ? $content : "");
             $hash->{timestamp} = $now;
         } else {
             $content = Encode::decode_utf8($hash->{content});

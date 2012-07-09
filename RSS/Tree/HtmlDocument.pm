@@ -18,7 +18,7 @@ sub new {
 sub find {
     my $self = shift;
     $self->{exposed} = 1;
-    return $self->_tree->find(_path(@_));
+    return $self->_tree->findnodes(_path(@_));
 }
 
 sub open {

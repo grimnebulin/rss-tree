@@ -331,11 +331,12 @@ returns.  The default implementation does nothing, but subclasses may
 override it to perform additional initialization, such as adding child
 nodes.
 
-=item $tree->run($name)
+=item $tree->run([ $name ])
 
 Fetches the RSS feed associated with this root node, and returns a
 string containing the original RSS document, from which all items
-EXCEPT those handled by the node named C<$name> have been removed.
+EXCEPT those handled by the node named C<$name> have been removed.  If
+C<$name> is omitted, it defaults to C<$tree-E<gt>name>.
 
 =item $tree->download($url)
 

@@ -118,8 +118,8 @@ RSS::Tree::Item - Represents a single item from an RSS feed
     my $uri = $item->uri;
     my $newuri = $item->uri($relative_uri);
 
-    my @anchors = $item->description->findnodes('//a');
-    my @divs    = $item->content->findnodes('//div');
+    my @anchors = $item->description->find('//a');
+    my @divs    = $item->content->find('//div');
 
 =head1 DESCRIPTION
 

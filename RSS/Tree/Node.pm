@@ -80,10 +80,10 @@ sub new_element {
     return HTML::Element->new_from_lol([ @_ ]);
 }
 
-sub findnodes {
+sub find {
     my ($self, $context, $path, @classes) = @_;
     require RSS::Tree::HtmlDocument;
-    return $context->findnodes(
+    return $context->find(
         RSS::Tree::HtmlDocument::_format_path($path, @classes)
     );
 }
@@ -242,7 +242,7 @@ reference, which is passed to C<new_from_lol>.  Example:
 
     my $elem = $self->new_element('p', 'This is ', [ 'i', 'italicized' ], ' text');
 
-=item $node->findnodes($context, $path [, @classes ])
+=item $node->find($context, $path [, @classes ])
 
 This method is an alternate entry point for the enhanced node-finding
 functionality offered by the C<RSS::Tree::HtmlDocument> class.  It

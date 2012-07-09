@@ -212,7 +212,7 @@ RSS::Tree - a tree of nodes for filtering and transforming RSS items
 
     sub render {
         my ($self, $item) = @_;
-        return $item->page->findnodes('//div[@id="main-content"]');
+        return $item->page->find('//div[@id="main-content"]');
     }
 
 =head1 DESCRIPTION

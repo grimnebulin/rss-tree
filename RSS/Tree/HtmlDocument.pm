@@ -15,10 +15,10 @@ sub new {
     }, $class;
 }
 
-sub findnodes {
+sub find {
     my $self = shift;
     $self->{exposed} = 1;
-    return $self->_tree->findnodes(_path(@_));
+    return $self->_tree->find(_path(@_));
 }
 
 sub open {
@@ -86,9 +86,9 @@ RSS::Tree::HtmlDocument - Wrapper for an HTML document, or a fragment of one
 
 =head1 SYNOPSIS
 
-    my @paragraphs = $document->findnodes('//p');
+    my @paragraphs = $document->find('//p');
 
-    my @summaries = $document->findnodes('//div[%s]', 'summary');
+    my @summaries = $document->find('//div[%s]', 'summary');
 
     print "My document: $document";  # stringification
 
@@ -106,7 +106,7 @@ client code, so the class's constructor is not documented here.
 
 =over 4
 
-=item $doc->findnodes($xpath [, @classes ])
+=item $doc->find($xpath [, @classes ])
 
 This method causes the enclosed HTML fragment to be parsed into a tree
 of nodes by the C<HTML::TreeBuilder::XPath> class, if it has not
@@ -129,7 +129,7 @@ where the argument's value replaces C<"desired-class">, and C<"%s">
 sequences in C<$xpath> are replaced with these strings in the order
 that they occur.  For example, the first argument in this call:
 
-    $document->findnodes('//div[%s]/div[%s]', 'header', 'subheader')
+    $document->find('//div[%s]/div[%s]', 'header', 'subheader')
 
 ...is expanded into the following XPath expression:
 
@@ -149,17 +149,17 @@ relative to the URI of this document.
 =back
 
 This class provides convenient stringification logic.  Until the
-C<findnodes> method is called, an object of this class stringifies to
-exactly the HTML text that it was initialized with.  The C<findnodes>
+C<find> method is called, an object of this class stringifies to
+exactly the HTML text that it was initialized with.  The C<find>
 method exposes the tree structure of the wrapped HTML fragment; using
 the returned nodes, client code is able to add nodes to the tree and
 delete and rearrange existing nodes.  The stringification of this
-object is intended to reflect such changes, and so after the
-C<findnodes> method has been called, the object stringifies to the
-concatenation of all of the nodes returned by the tree's C<guts>
-method (see C<HTML::TreeBuilder>).  C<HTML::Element> objects in this
-node list are stringified by calling the C<as_HTML> method; text nodes
-are stringified as-is.
+object is intended to reflect such changes, and so after the C<find>
+method has been called, the object stringifies to the concatenation of
+all of the nodes returned by the tree's C<guts> method (see
+C<HTML::TreeBuilder>).  C<HTML::Element> objects in this node list are
+stringified by calling the C<as_HTML> method; text nodes are
+stringified as-is.
 
 For example, consider an object C<$doc> of this class that wraps the
 following HTML fragment:
@@ -171,7 +171,7 @@ following HTML fragment:
 
 Then the following code:
 
-    $doc->findnodes('//span[@id="one"]')->shift->detach;
+    $doc->find('//span[@id="one"]')->shift->detach;
     print $doc;
 
 ...will print "<div><span id='two'>Two</span></div>" (possibly modulo

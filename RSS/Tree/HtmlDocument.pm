@@ -1,4 +1,3 @@
-# Should probably be "DocumentFragment" instead...
 package RSS::Tree::HtmlDocument;
 
 use URI;
@@ -22,16 +21,11 @@ sub findnodes {
     return $self->_tree->findnodes(_path(@_));
 }
 
-sub findvalue {
-    my $self = shift;
-    return $self->_tree->findvalue(_path(@_));
-}
-
 sub open {
-    my ($self, $url) = @_;
+    my ($self, $uri) = @_;
     require RSS::Tree::HtmlDocument::Web;
     return RSS::Tree::HtmlDocument::Web->new(
-        URI->new_abs($url, $self->{uri}), $self->{downloader}
+        URI->new_abs($uri, $self->{uri}), $self->{downloader}
     );
 }
 
@@ -44,9 +38,10 @@ sub _content {
 
 sub _tree {
     my $self = shift;
-    require HTML::TreeBuilder::XPath;
-    return $self->{tree} ||=
-        HTML::TreeBuilder::XPath->new_from_content($self->_content);
+    return $self->{tree} ||= do {
+        require HTML::TreeBuilder::XPath;
+        HTML::TreeBuilder::XPath->new_from_content($self->_content)
+    };
 }
 
 sub _as_str {
@@ -87,7 +82,7 @@ __END__
 
 =head1 NAME
 
-RSS::Tree::HtmlDocument - Wrapper for an HTML document
+RSS::Tree::HtmlDocument - Wrapper for an HTML document, or a fragment of one
 
 =head1 SYNOPSIS
 
@@ -95,18 +90,14 @@ RSS::Tree::HtmlDocument - Wrapper for an HTML document
 
     my @summaries = $document->findnodes('//div[%s]', 'summary');
 
-    my $href = $document->findvalue('//a[@id="nextpage"]/@href');
-
-    my $id = $document->findvalue('//p[%s or %s]/@id', 'header', 'heading');
-
     print "My document: $document";  # stringification
 
 =head1 DESCRIPTION
 
 A C<RSS::Tree::HtmlDocument> object wraps an HTML fragment which is
 parsed on demand into a tree by the C<HTML::TreeBuilder::XPath>
-module, and provides views into the document tree via enhanced
-versions of that class's C<findnodes> and C<findvalue> methods.
+module, and provides views into the document tree via an enhanced
+version of that class's C<findnodes> method.
 
 Objects of this class are not meant to be instantiated directly by
 client code, so the class's constructor is not documented here.
@@ -115,7 +106,7 @@ client code, so the class's constructor is not documented here.
 
 =over 4
 
-=item findnodes($xpath [, @classes ])
+=item $doc->findnodes($xpath [, @classes ])
 
 This method causes the enclosed HTML fragment to be parsed into a tree
 of nodes by the C<HTML::TreeBuilder::XPath> class, if it has not
@@ -147,15 +138,13 @@ that they occur.  For example, the first argument in this call:
 
 This substitution is performed by a simple call to C<sprintf>, so any
 extra arguments are discarded, and any extra C<"%s"> sequences are
-replaced by the empty string.
+deleted.
 
-=item findvalue($xpath [, @classes })
+=item $doc->open($uri)
 
-This method forwards the given XPath expression to the C<findvalue>
-method of the wrapped document tree's root node.  C<"%s"> sequences
-within C<$xpath> are expanded into class-test strings just as
-described above for the C<findnodes> method, if more than one argument
-is passed to this method.
+Returns a new C<RSS::Tree::HtmlDocument::Web> object that refers to
+the given URI.  If C<$uri> is a relative URI, it is taken to be
+relative to the URI of this document.
 
 =back
 
@@ -163,18 +152,18 @@ This class provides convenient stringification logic.  Until the
 C<findnodes> method is called, an object of this class stringifies to
 exactly the HTML text that it was initialized with.  The C<findnodes>
 method exposes the tree structure of the wrapped HTML fragment; using
-the returned nodes, client code is able to add nodes to tree and
+the returned nodes, client code is able to add nodes to the tree and
 delete and rearrange existing nodes.  The stringification of this
 object is intended to reflect such changes, and so after the
 C<findnodes> method has been called, the object stringifies to the
 concatenation of all of the nodes returned by the tree's C<guts>
-method (see C<HTML::TreeBuilder::XPath>).  C<HTML::Element> objects in
-this node list are stringified by calling the C<as_HTML> method; text
-nodes are concatenated as-is.
+method (see C<HTML::TreeBuilder>).  C<HTML::Element> objects in this
+node list are stringified by calling the C<as_HTML> method; text nodes
+are stringified as-is.
 
 For example, consider an object C<$doc> of this class that wraps the
 following HTML fragment:
- 
+
     <div id='main'>
       <span id='one'>One</span>
       <span id='two'>Two</span>

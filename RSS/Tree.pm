@@ -10,6 +10,8 @@ use base qw(RSS::Tree::Node);
 use strict;
 
 
+my $DEFAULT_CACHE_DIR = $ENV{RSS_TREE_CACHE_DIR};
+
 my $DEFAULT_ITEM_CACHE_SECONDS = 60 * 60 * 24;
 
 my $DEFAULT_FEED_CACHE_SECONDS = 60 * 5;
@@ -20,7 +22,7 @@ sub new {
 
     my $param = sub {
         my @value = map {
-            exists $param{$_} ? $param{$_} : do { my $uc = uc; $class->$uc() }
+            exists $param{$_} ? $param{$_} : do { my $uc = uc(); $class->$uc() }
         } @_;
         wantarray ? @value : $value[0];
     };
@@ -67,7 +69,7 @@ sub KEEP_ENCLOSURE {
 }
 
 sub CACHE_DIR {
-    return $ENV{RSS_TREE_CACHE_DIR};
+    return $DEFAULT_CACHE_DIR;
 }
 
 sub ITEM_CACHE_SECONDS {
@@ -88,13 +90,12 @@ sub run {
     defined $name or $name = $self->name;
 
     while ($index < @$items) {
-        my $item = $items->[$index];
-        my $copy = { %$item };
-        my $wrapper = RSS::Tree::Item->new($self, $copy);
-        my $node = $self->process($wrapper, $name);
+        my $item    = $items->[$index];
+        my $wrapper = RSS::Tree::Item->new($self, $item);
+        my $node    = $self->handles($wrapper, $name);
         if ($node && $node->name eq $name) {
             _set_content($item, $self->{cache}->cache_item($node, $wrapper));
-            $self->postprocess_item($item);
+            $self->_postprocess_item($item);
             ++$index;
             defined $title or $title = $node->title;
         } else {
@@ -105,19 +106,17 @@ sub run {
     $rss->{channel}{title} = $rss->{channel}{description} =
         defined $title ? $title : $name;
 
-    # $rss->{channel}{link} = $self->{url} . $name . '.pl';
-
     return $rss->as_string;
 
 }
 
-sub download {
+sub fetch {
     my ($self, $url) = @_;
     require RSS::Tree::HtmlDocument::Web;
     return RSS::Tree::HtmlDocument::Web->new($url, $self);
 }
 
-sub postprocess_item {
+sub _postprocess_item {
     my ($self, $item) = @_;
     delete $item->{guid};
     delete $item->{enclosure} if !$self->{keep_enclosure};
@@ -130,10 +129,12 @@ sub write_programs {
 
 sub _agent {
     my $self = shift;
-    return $self->{agent} ||= LWP::UserAgent->new(agent => $self->{agent_id});
+    return $self->{agent} ||= LWP::UserAgent->new(
+        defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
+    );
 }
 
-sub _download {
+sub download {
     my ($self, $url) = @_;
     my $response = $self->_agent->get($url);
     return if !$response->is_success;
@@ -144,7 +145,7 @@ sub _download_feed {
     my $self = shift;
     defined $self->{feed}
         or die "No RSS feed defined for class ", ref $self, "\n";
-    defined(my $content = $self->_download($self->{feed}))
+    defined(my $content = $self->download($self->{feed}))
         or die "Failed to download RSS feed from $self->{feed}\n";
     return $content;
 }
@@ -178,16 +179,16 @@ RSS::Tree - a tree of nodes for filtering and transforming RSS items
     use base qw(RSS::Tree);
 
     use constant {
-        FEED  => 'http://www.stuff.com/feed/rss.xml',
         NAME  => 'stuff',
         TITLE => 'Interesting Stuff'
+        FEED  => 'http://www.stuff.com/feed/rss.xml',
     };
 
     # Split items whose titles match the regular expression /Movie:/
     # into a subfeed named "movies", and items whose titles match
     # /Television:/ into a subfeed named "tv".  Items falling into
     # neither of those categories will show up in the root item's
-    # feed "stuff" (from the NAME constant above).
+    # feed named "stuff".
 
     sub init {
         my $self = shift;
@@ -207,30 +208,29 @@ RSS::Tree - a tree of nodes for filtering and transforming RSS items
     }
 
     # Render the item by going to the page it links to
-    # and extracting the div with id "body":
+    # and extracting the div with id "main-content":
 
     sub render {
         my ($self, $item) = @_;
-        return $item->page->findnodes('//div[@id="body"]')->shift;
+        return $item->page->findnodes('//div[@id="main-content"]');
     }
 
 =head1 DESCRIPTION
 
 An C<RSS::Tree> object forms the root of a tree of C<RSS::Tree::Node>
 objects.  Each node in the tree (including the root node) represents a
-subfeed into which some of the items from the root RSS feed will be
-diverted.  Each node decides whether to accept items passed to it, and
-also renders the items it does accept into HTML according to arbitrary
-logic.  Facilities are provided to conveniently access the pages
-linked to by RSS items, and to search both item text and web page text
-using XPath.
+subfeed into which some of the items from the root RSS feed may be
+diverted.  Each node decides whether to handle items passed to it, and
+also renders the items it does handle into HTML.  Facilities are
+provided to conveniently access the pages linked to by RSS items, and
+to search both item text and web page text using XPath.
 
-Commonly, a tree will consist of only the root node, which can filter
-out uninteresting items from the source feed and/or render the
-interesting items arbitrarily.
+Commonly, a tree will consist of only the single root node, which can
+filter out uninteresting items from the source feed and/or render the
+interesting items in arbitrary ways.
 
 Features are provided that should make it unnecessary to write a
-constructor most (all?) of the time.
+constructor most of the time.
 
 =head1 CONSTRUCTOR
 
@@ -244,7 +244,6 @@ of which the following are recognized:
 =over 4
 
 =item name
-
 =item title
 
 These are the root node's name and title.  They are passed to the
@@ -260,16 +259,22 @@ method is ever called.
 
 The directory where the cache file for this feed will be stored.  If
 undefined, no cacheing will be performed.  It defaults to the value of
-the C<RSS_TREE_CACHE_DIR> environment variable.
+the C<RSS_TREE_CACHE_DIR> environment variable at the time this module
+was loaded.
+
+Cacheing is handled by the C<DBM::Deep> module, which is C<require>d
+when any item is to be cached.  An exception will occur if that module
+is not available.
 
 =item feed_cache_seconds
 
 =item item_cache_seconds
 
-The length of time that the feed text and item text will be cached,
-respectively.  These paramters have no effect unless the C<cache_dir>
-parameter is defined.  If C<feed_cache_seconds> is undefined, no feed
-cacheing will be performed, and similarly for C<item_cache_seconds>.
+The length of time in seconds that the feed text and item text will be
+cached, respectively.  These paramters have no effect unless the
+C<cache_dir> parameter is defined.  If C<feed_cache_seconds> is
+undefined, no feed cacheing will be performed, and similarly for
+C<item_cache_seconds>.
 
 C<feed_cache_seconds> defaults to 300 (five minutes), and
 C<item_cache_seconds> defaults to 86400 (twenty-four hours).
@@ -278,7 +283,14 @@ C<item_cache_seconds> defaults to 86400 (twenty-four hours).
 
 This is the User-Agent string that will be used by the
 C<LWP::UserAgent> object that performs all web requests related to
-this object.  It defaults to C<""> (the empty string).
+this object.  It defaults to C<""> (the empty string).  If undefined,
+no explicit user-agent will be set, and so the default agent supplied
+by the C<LWP::UserAgent> module will be used.
+
+=item keep_enclosure
+
+If false, each RSS item processed by the object will be stripped of
+its "enclosure" field.  Defaults to true.
 
 =back
 
@@ -296,6 +308,7 @@ uppercased.  Explicitly:
 =item FEED_CACHE_SECONDS
 =item ITEM_CACHE_SECONDS
 =item AGENT_ID
+=item KEEP_ENCLOSURE
 
 =back
 
@@ -303,7 +316,7 @@ Such methods can be easily defined by the C<constant> pragma, e.g.:
 
     package MyTree;
     use base qw(RSS::Tree);
-    use constant { FEED => 'http://...', NAME => 'foo', TITLE => 'FOO' };
+    use constant { FEED => 'http://...', NAME => 'foo', TITLE => 'Foo' };
 
 =back
 
@@ -311,24 +324,46 @@ Such methods can be easily defined by the C<constant> pragma, e.g.:
 
 =over 4
 
+=item $tree->init
+
+This method is called by the constructor immediately before it
+returns.  The default implementation does nothing, but subclasses may
+override it to perform additional initialization, such as adding child
+nodes.
+
 =item $tree->run($name)
 
-Fetches the RSS feed associated with this root node, and distributes
-each item to one of the nodes of the tree.  Returns a string
-containing the original RSS document, from which all items EXCEPT
-those claimed by the node named C<$name> have been removed.
+Fetches the RSS feed associated with this root node, and returns a
+string containing the original RSS document, from which all items
+EXCEPT those handled by the node named C<$name> have been removed.
 
 =item $tree->download($url)
+
+Downloads the given URL.  Returns a string containing the content of
+the URL, or C<undef> if the content could not be downloaded for any
+reason.
+
+Downloading is performed by an C<LWP::UserAgent> object that is
+instantiated and cached when this method is first called.  An
+exception will occur if the C<LWP::UserAgent> module is not
+available.
+
+=item $tree->fetch($url)
 
 Returns an C<RSS::Tree::HtmlDocument::Web> object through which the
 web page referenced by C<$url> can be accessed.
 
 =item $tree->write_programs([ use => $module ])
 
-Descends recursively through the tree.  For each node whose name is
-defined, a file is written in the current directory whose name is
-obtained by appending ".pl" to the name of the node.  The file
-contains a short Perl program which emits the subset of the items in
-the source feed that are matched by that particular node.
+Descends recursively through the tree.  For each node in the tree
+whose name is defined, a file is written in the current directory
+whose name is obtained by appending ".pl" to the name of the node.
+The file contains a short Perl program which emits the subset of the
+items in the source feed that are matched by that particular node.
+
+If the C<$module> parameter is supplied, each generated Perl program
+will C<use> that module rather than the module to which C<$tree>
+belongs.  This is part of an experimental feature that has yet to be
+developed fully.
 
 =back

@@ -136,9 +136,11 @@ sub _textify {
     return if @_ == 0;
 
     return join "", map {
-        UNIVERSAL::isa($_, 'HTML::Element')
-            ? $_->as_HTML("", undef, { })
-            : $_
+        !defined()
+            ? ""
+            : UNIVERSAL::isa($_, 'HTML::Element')
+                ? $_->as_HTML("", undef, { })
+                : $_
     } @_;
 
 }

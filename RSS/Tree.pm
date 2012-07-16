@@ -120,6 +120,11 @@ sub _postprocess_item {
     my ($self, $item) = @_;
     delete $item->{guid};
     delete $item->{enclosure} if !$self->{keep_enclosure};
+    $self->postprocess_item;
+}
+
+sub postprocess_item {
+    # nop - can be overridden
 }
 
 sub write_programs {

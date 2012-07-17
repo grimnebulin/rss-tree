@@ -10,8 +10,6 @@ use base qw(RSS::Tree::Node);
 use strict;
 
 
-my $DEFAULT_CACHE_DIR = $ENV{RSS_TREE_CACHE_DIR};
-
 my $DEFAULT_ITEM_CACHE_SECONDS = 60 * 60 * 24;
 
 my $DEFAULT_FEED_CACHE_SECONDS = 60 * 5;
@@ -69,7 +67,7 @@ sub KEEP_ENCLOSURE {
 }
 
 sub CACHE_DIR {
-    return $DEFAULT_CACHE_DIR;
+    return $ENV{RSS_TREE_CACHE_DIR};
 }
 
 sub ITEM_CACHE_SECONDS {
@@ -264,8 +262,7 @@ method is ever called.
 
 The directory where the cache file for this feed will be stored.  If
 undefined, no cacheing will be performed.  It defaults to the value of
-the C<RSS_TREE_CACHE_DIR> environment variable at the time this module
-was loaded.
+the C<RSS_TREE_CACHE_DIR> environment variable.
 
 Cacheing is handled by the C<DBM::Deep> module, which is C<require>d
 when any item is to be cached.  An exception will occur if that module

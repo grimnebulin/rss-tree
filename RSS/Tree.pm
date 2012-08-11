@@ -33,8 +33,7 @@ sub new {
         $self, $param->('cache_dir', 'feed_cache_seconds', 'item_cache_seconds')
     );
 
-    $self->{agent_id}       = $param->('agent_id');
-    $self->{keep_enclosure} = $param->('keep_enclosure');
+    $self->{$_} = $param->($_) for qw(agent_id keep_enclosure keep_guid);
 
     $self->init;
 
@@ -64,6 +63,10 @@ sub AGENT_ID {
 
 sub KEEP_ENCLOSURE {
     return 1;
+}
+
+sub KEEP_GUID {
+    return 0;
 }
 
 sub CACHE_DIR {
@@ -116,7 +119,7 @@ sub fetch {
 
 sub _postprocess_item {
     my ($self, $item) = @_;
-    delete $item->{guid};
+    delete $item->{guid}      if !$self->{keep_guid};
     delete $item->{enclosure} if !$self->{keep_enclosure};
     $self->postprocess_item;
 }

@@ -71,14 +71,13 @@ sub page {
 
 sub content {
     my $self = shift;
-    return exists $self->{content}
-        ? $self->{content}
-        : do {
-            my $content = $self->{item}{content};
-            $content = $content->{encoded}
-                if ref $content eq 'HASH' && exists $content->{encoded};
-            $self->{content} = $self->_static($content);
-        };
+    exists $self->{content} or $self->{content} = do {
+        my $content = $self->{item}{content};
+        $content = $content->{encoded}
+            if ref $content eq 'HASH' && exists $content->{encoded};
+        $self->{content} = defined $content ? $self->_static($content) : undef;
+    };
+    return $self->{content};
 }
 
 sub _static {

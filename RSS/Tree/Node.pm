@@ -5,7 +5,7 @@ use RSS::Tree::HtmlDocument;
 use strict;
 
 sub new {
-    my ($class, $name, $title) = @_;
+    my ($class, $name, $title, %param) = @_;
 
     !defined $name
         or $name =~ /^\w+\z/
@@ -20,7 +20,7 @@ sub new {
 
 }
 
-sub name {
+ sub name {
     return shift->{name};
 }
 
@@ -49,6 +49,7 @@ sub match_title {
 sub match_author {
     my ($self, $regex) = @_;
     $self->{test} = eval 'sub { _trim($_[0]->author) =~ /$regex/o }';
+    die $@ if $@;
     return $self;
 }
 

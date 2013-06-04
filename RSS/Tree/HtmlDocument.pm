@@ -43,9 +43,8 @@ sub truncate {
 
 sub _content {
     my $self = shift;
-    return exists $self->{content}
-        ? $self->{content}
-        : ($self->{content} = $self->_get_content);
+    exists $self->{content} or $self->{content} = $self->_get_content;
+    return $self->{content};
 }
 
 sub _tree {

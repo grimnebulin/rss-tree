@@ -77,7 +77,7 @@ sub cache_feed {
 sub cache_item {
     my ($self, $node, $item) = @_;
     return $self->_cache(
-        sub { _textify($node->render($item)) },
+        sub { _textify($node, $item) },
         $self->{item_seconds},
         'items', $item->link || $item->guid
     );
@@ -133,7 +133,9 @@ sub _lock_dbm {
 }
 
 sub _textify {
-    return if @_ == 0;
+    my ($node, $item) = @_;
+    my @content = $node->render($item);
+    @content or @content = $node->RSS::Tree::Node::render($item);
 
     return join "", map {
         !defined()
@@ -141,7 +143,7 @@ sub _textify {
             : UNIVERSAL::isa($_, 'HTML::Element')
                 ? $_->as_HTML("", undef, { })
                 : $_
-    } @_;
+    } @content;
 
 }
 

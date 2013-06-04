@@ -1,6 +1,7 @@
 package RSS::Tree::Node;
 
 use Carp;
+use RSS::Tree::HtmlDocument;
 use strict;
 
 sub new {
@@ -82,10 +83,21 @@ sub new_element {
 
 sub find {
     my ($self, $context, $path, @classes) = @_;
-    require RSS::Tree::HtmlDocument;
     return $context->findnodes(
         RSS::Tree::HtmlDocument::_format_path($path, @classes)
     );
+}
+
+sub remove {
+    my ($self, $context, $path, @classes) = @_;
+    RSS::Tree::HtmlDocument::_remove($context, $path, @classes);
+    return $self;
+}
+
+sub truncate {
+    my ($self, $context, $path, @classes) = @_;
+    RSS::Tree::HtmlDocument::_truncate($context, $path, @classes);
+    return $self;
 }
 
 sub _children {

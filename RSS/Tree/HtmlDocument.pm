@@ -29,6 +29,18 @@ sub open {
     );
 }
 
+sub remove {
+    my ($self, $path, @classes) = @_;
+    _remove($self->_tree, $path, @classes);
+    return $self;
+}
+
+sub truncate {
+    my ($self, $path, @classes) = @_;
+    _truncate($self->_tree, $path, @classes);
+    return $self;
+}
+
 sub _content {
     my $self = shift;
     return exists $self->{content}
@@ -75,6 +87,18 @@ sub _path {
     return @classes ? _format_path($path, @classes) : $path;
 }
 
+sub _remove {
+    my ($context, $path, @classes) = @_;
+    $_->detach for $context->findnodes(_format_path($path, @classes));
+}
+
+sub _truncate {
+    my ($context, $path, @classes) = @_;
+    for my $node ($context->findnodes(_format_path($path, @classes))) {
+        my $parent = $node->parent;
+        $parent->splice_content($node->pindex) if $parent;
+    }
+}
 
 1;
 

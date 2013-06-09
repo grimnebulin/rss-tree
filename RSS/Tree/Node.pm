@@ -86,7 +86,9 @@ sub handles {
 
 sub render {
     my ($self, $item) = @_;
-    return defined $item->content ? $item->content : $item->description;
+    return $self->parent->render($item) if $self->parent;
+    return $item->content if defined $item->content;
+    return $item->description;
 }
 
 sub uri_for {

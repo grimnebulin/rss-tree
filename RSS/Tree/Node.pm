@@ -67,6 +67,7 @@ sub match_creator {
 
 sub _match {
     my ($self, $field, $regex) = @_;
+    $field =~ /^[^\W\d]\w*\z/ or die qq(Invalid field "$field"\n);
     $self->{test} = eval "sub { _trim(\$_[0]->$field) =~ /\$regex/o }";
     die $@ if $@;
     return $self;

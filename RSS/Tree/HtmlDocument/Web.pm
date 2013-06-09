@@ -1,6 +1,6 @@
 package RSS::Tree::HtmlDocument::Web;
 
-use base qw(RSS::Tree::HtmlDocument);
+use parent qw(RSS::Tree::HtmlDocument);
 use strict;
 
 

@@ -6,7 +6,7 @@ use RSS::Tree::Cache;
 use RSS::Tree::Item;
 use XML::RSS;
 
-use base qw(RSS::Tree::Node);
+use parent qw(RSS::Tree::Node);
 use strict;
 
 

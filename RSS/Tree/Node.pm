@@ -14,6 +14,7 @@ sub new {
     bless {
         name     => $name,
         title    => $title,
+        parent   => undef,
         children => [ ],
         test     => undef,
     }, $class;
@@ -28,9 +29,20 @@ sub title {
     return shift->{title};
 }
 
+sub parent {
+    return shift->{parent};
+}
+
+sub root {
+    my $self = shift;
+    return $self->parent->root if $self->parent;
+    return $self;
+}
+
 sub add {
     my $self = shift;
     push @{ $self->{children} }, @_;
+    Scalar::Util::weaken($_->{parent} = $self) for @_;
     return $self;
 }
 

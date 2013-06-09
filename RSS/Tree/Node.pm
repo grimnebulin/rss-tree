@@ -53,15 +53,20 @@ sub test {
 }
 
 sub match_title {
-    my ($self, $regex) = @_;
-    $self->{test} = eval 'sub { _trim($_[0]->title) =~ /$regex/o }';
-    die $@ if $@;
-    return $self;
+    return shift->_match('title', @_);
 }
 
 sub match_author {
-    my ($self, $regex) = @_;
-    $self->{test} = eval 'sub { _trim($_[0]->author) =~ /$regex/o }';
+    return shift->_match('author', @_);
+}
+
+sub match_creator {
+    return shift->_match('creator', @_);
+}
+
+sub _match {
+    my ($self, $field, $regex) = @_;
+    $self->{test} = eval "sub { _trim(\$_[0]->$field) =~ /\$regex/o }";
     die $@ if $@;
     return $self;
 }

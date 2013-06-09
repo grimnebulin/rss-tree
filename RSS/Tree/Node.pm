@@ -1,16 +1,17 @@
 package RSS::Tree::Node;
 
-use Carp;
+use Carp ();
 use RSS::Tree::HtmlDocument;
 use Scalar::Util ();
 use strict;
 
+
 sub new {
-    my ($class, $name, $title, %param) = @_;
+    my ($class, $name, $title) = @_;
 
     !defined $name
         or $name =~ /^\w+\z/
-        or croak qq(Invalid node name "$name"\n);
+        or Carp::croak(qq(Invalid node name "$name"\n));
 
     bless {
         name     => $name,
@@ -105,7 +106,7 @@ sub new_element {
 sub find {
     my ($self, $context, $path, @classes) = @_;
     return $context->findnodes(
-        RSS::Tree::HtmlDocument::_format_path($path, @classes)
+        RSS::Tree::HtmlDocument::_path($path, @classes)
     );
 }
 

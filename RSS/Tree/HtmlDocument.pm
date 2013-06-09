@@ -51,7 +51,10 @@ sub _tree {
     my $self = shift;
     return $self->{tree} ||= do {
         require HTML::TreeBuilder::XPath;
-        HTML::TreeBuilder::XPath->new_from_content($self->_content)
+        my $tree = HTML::TreeBuilder::XPath->new(ignore_unknown => 0);
+        $tree->parse($self->_content);
+        $tree->eof;
+        $tree;
     };
 }
 

@@ -88,9 +88,16 @@ sub handles {
 
 sub render {
     my ($self, $item) = @_;
-    return $self->parent->render($item) if $self->parent;
-    return $item->content if defined $item->content;
-    return $item->description;
+    return $self->parent
+        ? $self->parent->render($item)
+        : $self->render_default($item);
+}
+
+sub render_default {
+    my ($self, $item) = @_;
+    return defined $item->content
+        ? $item->content
+        : $item->description;
 }
 
 sub uri_for {

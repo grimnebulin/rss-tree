@@ -16,9 +16,9 @@ sub new {
 }
 
 sub find {
-    my $self = shift;
+    my ($self, $path, @classes) = @_;
     $self->{exposed} = 1;
-    return $self->_tree->findnodes(_path(@_));
+    return $self->_tree->findnodes(_format_path($path, @classes));
 }
 
 sub open {
@@ -82,11 +82,6 @@ sub _has_class {
     my $class = shift;
     return sprintf 'contains(concat(" ",normalize-space(@class)," ")," %s ")',
                    $class;
-}
-
-sub _path {
-    my ($path, @classes) = @_;
-    return @classes ? _format_path($path, @classes) : $path;
 }
 
 sub _remove {

@@ -114,7 +114,7 @@ sub new_element {
 sub find {
     my ($self, $context, $path, @classes) = @_;
     return $context->findnodes(
-        RSS::Tree::HtmlDocument::_path($path, @classes)
+        RSS::Tree::HtmlDocument::_format_path($path, @classes)
     );
 }
 

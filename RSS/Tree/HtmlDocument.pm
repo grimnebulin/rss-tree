@@ -18,7 +18,7 @@ sub new {
 sub find {
     my ($self, $path, @classes) = @_;
     $self->{exposed} = 1;
-    return $self->_tree->findnodes(_format_path($path, @classes));
+    return _find_all($self->_tree, $path, @classes);
 }
 
 sub open {
@@ -85,16 +85,19 @@ sub _has_class {
 }
 
 sub _remove {
-    my ($context, $path, @classes) = @_;
-    $_->detach for $context->findnodes(_format_path($path, @classes));
+    $_->detach for _find_all(@_);
 }
 
 sub _truncate {
-    my ($context, $path, @classes) = @_;
-    for my $node ($context->findnodes(_format_path($path, @classes))) {
+    for my $node (_find_all(@_)) {
         my $parent = $node->parent;
         $parent->splice_content($node->pindex) if $parent;
     }
+}
+
+sub _find_all {
+    my ($context, $path, @classes) = @_;
+    return $context->findnodes(_format_path($path, @classes));
 }
 
 1;

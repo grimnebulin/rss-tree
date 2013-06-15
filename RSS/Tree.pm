@@ -27,13 +27,11 @@ sub new {
 
     my $self = $class->SUPER::new($param->('name', 'title'));
 
-    $self->{feed} = $param->('feed');
+    $self->{$_} = $param->($_) for qw(feed agent_id keep_enclosure keep_guid);
 
     $self->{cache} = RSS::Tree::Cache->new(
         $self, $param->('cache_dir', 'feed_cache_seconds', 'item_cache_seconds')
     );
-
-    $self->{$_} = $param->($_) for qw(agent_id keep_enclosure keep_guid);
 
     $self->init;
 

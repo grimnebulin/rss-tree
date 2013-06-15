@@ -65,11 +65,15 @@ sub _as_str {
 
 sub _render_tree {
     my $tree = shift;
+    return _render($tree->guts);
+}
+
+sub _render {
     return join "", map {
         UNIVERSAL::isa($_, 'HTML::Element')
             ? $_->as_HTML("", undef, { })
             : $_
-    } $tree->guts;
+    } @_;
 }
 
 sub _format_path {

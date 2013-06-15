@@ -4,6 +4,7 @@ use Encode ();
 use Errno;
 use Scalar::Util;
 use Try::Tiny ();
+use RSS::Tree::HtmlDocument;
 use strict;
 
 
@@ -136,15 +137,7 @@ sub _textify {
     my ($node, $item) = @_;
     my @content = $node->render($item);
     @content or @content = $node->RSS::Tree::Node::render_default($item);
-
-    return join "", map {
-        !defined()
-            ? ""
-            : UNIVERSAL::isa($_, 'HTML::Element')
-                ? $_->as_HTML("", undef, { })
-                : $_
-    } @content;
-
+    return RSS::Tree::HtmlDocument::_render(@content);
 }
 
 

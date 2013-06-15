@@ -135,7 +135,7 @@ sub _lock_dbm {
 sub _textify {
     my ($node, $item) = @_;
     my @content = $node->render($item);
-    @content or @content = $node->RSS::Tree::Node::render($item);
+    @content or @content = $node->RSS::Tree::Node::render_default($item);
 
     return join "", map {
         !defined()

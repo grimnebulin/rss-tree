@@ -65,10 +65,9 @@ sub _as_str {
 
 sub _render_tree {
     my $tree = shift;
-    my $tags = { };
     return join "", map {
         UNIVERSAL::isa($_, 'HTML::Element')
-            ? $_->as_HTML("", undef, $tags)
+            ? $_->as_HTML("", undef, { })
             : $_
     } $tree->guts;
 }

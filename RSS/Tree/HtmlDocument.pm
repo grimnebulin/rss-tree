@@ -17,7 +17,6 @@ sub new {
 
 sub find {
     my ($self, $path, @classes) = @_;
-    $self->{exposed} = 1;
     return _find_all($self->_tree, $path, @classes);
 }
 
@@ -54,6 +53,7 @@ sub _tree {
         my $tree = HTML::TreeBuilder::XPath->new(ignore_unknown => 0);
         $tree->parse($self->_content);
         $tree->eof;
+        $self->{exposed} = 1;
         $tree;
     };
 }

@@ -142,6 +142,11 @@ sub download {
     my ($self, $url) = @_;
     my $response = $self->_agent->get($url);
     return if !$response->is_success;
+    return $self->decode_response($response);
+}
+
+sub decode_response {
+    my ($self, $response) = @_;
     return $response->decoded_content;
 }
 

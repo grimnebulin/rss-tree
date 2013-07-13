@@ -2,7 +2,7 @@ package RSS::Tree::Node;
 
 use Carp ();
 use RSS::Tree::HtmlDocument;
-use Scalar::Util ();
+use Scalar::Util;
 use strict;
 
 

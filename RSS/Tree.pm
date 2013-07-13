@@ -109,6 +109,13 @@ sub run {
 
 }
 
+sub download {
+    my ($self, $url) = @_;
+    my $response = $self->_agent->get($url);
+    return if !$response->is_success;
+    return $self->decode_response($response);
+}
+
 sub fetch {
     my ($self, $url) = @_;
     require RSS::Tree::HtmlDocument::Web;
@@ -136,13 +143,6 @@ sub _agent {
     return $self->{agent} ||= LWP::UserAgent->new(
         defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
     );
-}
-
-sub download {
-    my ($self, $url) = @_;
-    my $response = $self->_agent->get($url);
-    return if !$response->is_success;
-    return $self->decode_response($response);
 }
 
 sub decode_response {
@@ -227,12 +227,13 @@ RSS::Tree - a tree of nodes for filtering and transforming RSS items
 =head1 DESCRIPTION
 
 An C<RSS::Tree> object forms the root of a tree of C<RSS::Tree::Node>
-objects.  Each node in the tree (including the root node) represents a
-subfeed into which some of the items from the root RSS feed may be
-diverted.  Each node decides whether to handle items passed to it, and
-also renders the items it does handle into HTML.  Facilities are
-provided to conveniently access the pages linked to by RSS items, and
-to search both item text and web page text using XPath.
+objects.  (C<RSS::Tree> is itself a subclass of C<RSS::Tree::Node>.)
+Each node in the tree (including the root node) represents a subfeed
+into which some of the items from the root RSS feed may be diverted.
+Each node decides whether to handle items passed to it, and also
+renders the items it does handle into HTML.  Facilities are provided
+to conveniently access the pages linked to by RSS items, and to search
+both item text and web page text using XPath.
 
 Commonly, a tree will consist of only the single root node, which can
 filter out uninteresting items from the source feed and/or render the
@@ -275,11 +276,10 @@ when any item is to be cached.  An exception will occur if that module
 is not available.
 
 =item feed_cache_seconds
-
 =item item_cache_seconds
 
 The length of time in seconds that the feed text and item text will be
-cached, respectively.  These paramters have no effect unless the
+cached, respectively.  These parameters have no effect unless the
 C<cache_dir> parameter is defined.  If C<feed_cache_seconds> is
 undefined, no feed cacheing will be performed, and similarly for
 C<item_cache_seconds>.
@@ -300,6 +300,11 @@ by the C<LWP::UserAgent> module will be used.
 If false, each RSS item processed by the object will be stripped of
 its "enclosure" field.  Defaults to true.
 
+=item keep_guid
+
+If false, each RSS item processed by the object will be stripped of
+its "guid" field.  Defaults to false.
+
 =back
 
 It is convenient not to have to write a constructor for every subclass
@@ -317,14 +322,18 @@ uppercased.  Explicitly:
 =item ITEM_CACHE_SECONDS
 =item AGENT_ID
 =item KEEP_ENCLOSURE
+=item KEEP_GUID
 
 =back
 
 Such methods can be easily defined by the C<constant> pragma, e.g.:
 
     package MyTree;
-    use base qw(RSS::Tree);
+    use parent qw(RSS::Tree);
     use constant { FEED => 'http://...', NAME => 'foo', TITLE => 'Foo' };
+
+A parameter passed to the constructor overrides the parameter value
+returned by these methods.
 
 =back
 
@@ -346,6 +355,25 @@ string containing the original RSS document, from which all items
 EXCEPT those handled by the node named C<$name> have been removed.  If
 C<$name> is omitted, it defaults to C<$tree-E<gt>name>.
 
+For example, consider a tree with a root node C<$root> named "foo" and
+child nodes named "bar" and "baz":
+
+                     _____
+                    | foo |
+                     -----
+                    /     \
+                   /       \
+             _____          _____
+            | bar |        | baz |
+             -----          -----
+
+Then C<$root-E<gt>run('bar')> returns the source RSS feed from which
+all items except those handled by the "bar" node have been removed;
+C<$root-E<gt>run('baz')> returns the feed from which all items except
+those handled by the "baz" node have been removed; and
+C<$root-E<gt>run('foo')> and C<$root-E<gt>run()> return all items
+except those handled by the "foo" node.
+
 =item $tree->download($url)
 
 Downloads the given URL.  Returns a string containing the content of
@@ -357,10 +385,22 @@ instantiated and cached when this method is first called.  An
 exception will occur if the C<LWP::UserAgent> module is not
 available.
 
+=item $tree->decode_response($response)
+
+This method should return the decoded content of C<$response>, an
+C<HTTP::Response> object.  The default implementation simply returns
+C<$response-E<gt>decoded_content()>, but a subclass may override this
+method if special handling is needed.
+
 =item $tree->fetch($url)
 
 Returns an C<RSS::Tree::HtmlDocument::Web> object through which the
 web page referenced by C<$url> can be accessed.
+
+=item $tree->postprocess_item($item)
+
+This method does nothing, but a subclass may override it to perform
+any desired postprocessing on C<$item> before it is rendered.
 
 =item $tree->write_programs([ use => $module ])
 

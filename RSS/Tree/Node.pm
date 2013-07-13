@@ -23,7 +23,7 @@ sub new {
 
 }
 
- sub name {
+sub name {
     return shift->{name};
 }
 
@@ -177,7 +177,7 @@ RSS::Tree::Node - nodes in an C<RSS::Tree> tree
 =head1 SYNOPSIS
 
     package MyNode;
-    use base qw(RSS::Tree::Node);
+    use parent qw(RSS::Tree::Node);
 
 =head1 DESCRIPTION
 
@@ -190,10 +190,11 @@ item.
 
 =over 4
 
-=item RSS::Node->new([ $name [, $title ] ])
+=item RSS::Tree::Node->new([ $name [, $title ] ])
 
 Create a new C<RSS::Node>.  C<$name> must consist entirely of one or
-more Perl word-characters (alphanumerics plus underscore).
+more Perl word-characters (alphanumerics plus underscore), or an
+exception will be thrown.
 
 A node's name serves two purposes.  First, the program written for the
 node by the tree's C<write_programs> method is named by appending
@@ -218,13 +219,22 @@ to filter items from the feed.
 =item $node->name
 =item $node->title
 
-These methods return the node's name and title, respectively.
+These accessors return the node's name and title, respectively.
+
+=item $node->parent
+
+This accessor returns the node's parent if it has one, of C<undef>
+otherwise.
+
+=item $node->root
+
+Returns the root node of the tree of which C<$node> is a part.
 
 =item $node->add(@child)
 
 Adds the elements of C<@child>, each of which should be a
 C<RSS::Tree::Node> object, to the list of this node's child nodes.
-Returns C<$node>.
+The parent of node is set to C<$node>.  Returns C<$node>.
 
 =item $node->test($item)
 
@@ -232,18 +242,26 @@ Returns true if the given C<RSS::Tree::Item> satisfies this node's
 test, meaning that the item will be handled by this node or one of its
 descendants.
 
-If either of this node's C<match_title> or C<match_author> methods
-have previously been called, then this method returns true if the
-item's title or author, respectively, matches the regular expression
-provided to the most recently called of the two methods.  Otherwise,
-it returns true by default.  Subclasses may override this method to
-provide other kinds of testing.
+The default implementation returns true, unless one of the
+C<match_title>, C<match_author>, or C<match_creator> methods have been
+called.  In that case, it returns true if the item's title, author, or
+creator, respectively, match the regular expression that was passed to
+that method.  Those attributes of the item are trimmed of leading and
+trailing whitespace before being tested by the regex.  If more than
+one of the aforementioned methods have been called, the last such
+method determines the behavior of the C<test> method.
+
+This default behavior is a convenience for the common case of testing
+an item's title, author, or creator.  For other kinds of tests, a
+subclass of C<RSS::Tree::Node> must be created that overrides the
+C<test> method.
 
 =item $node->match_title($regex)
 =item $node->match_author($regex)
+=item $node->match_creator($regex)
 
 See the description of the C<test> method for details.  These methods
-both return C<$node>.
+all return C<$node>.
 
 =item $node->handles($item [, $stop ])
 
@@ -251,36 +269,64 @@ Returns the node that will handle the given C<RSS::Tree::Item> item,
 if that node is C<$node> or one of its descendants.
 
 If C<$node-E<gt>test($item)> returns true, then the method will
-recursively call the C<handles> method on its children (if any),
-passing them the same arguments.  If any child returns a true value,
-that value is returned from this method.  Otherwise, C<$node> is
-returned.
+recursively call the C<handles> method on its children (if any), in
+the order they were added, passing them the same C<$item> and C<$stop>
+arguments.  If any child node returns a true value, that value (which
+will be the node that handles C<$item>) is returned from this method.
+Otherwise, C<$node> is returned.
 
-If C<$node-E<gt>test($item)> does not return true, then one of two false
-values is returned.  If C<$stop> is defined and is equal to the name
-of C<$node>, then C<undef> is returned.  Otherwise, 0 is returned.
-These distinct false values allow the caller to determine whether the
-node named C<$stop> has been encountered; if so, no further searching
-needs to be done.
+If C<$node-E<gt>test($item)> does not return true, then one of two
+false values is returned.  If C<$stop> is defined and is equal to the
+name of C<$node>, then C<undef> is returned.  Otherwise, C<0> is
+returned.  These distinct false values allow the caller to determine
+whether the node named C<$stop> has been encountered; if so, no
+further searching needs to be done.
 
 =item $node->render($item)
 
-Returns C<$item-E<gt>description>.  Subclasses may override this method to
-provide other kinds of rendering.
+Renders the given RSS item C<$item> into a desired textual
+representation.  The method will be called in list context.
+C<HTML::Element> objects in the return list are stringified by calling
+that class's C<as_HTML> method; all other objects are stringified in
+the default manner (eg, by being used in a string context).  The
+stringified elements of the returned list are concatenated together,
+and the resulting string is taken to be the rendered form of C<$item>.
+
+The default implementation operates as follows: If C<$node> has a
+parent C<$parent> (that is, it is not the root of the tree in which it
+resides), then C<$parent-E<gt>render($item)> is returned.  Otherwise,
+C<$node->render_default($item)> is returned.
+
+Typically, the C<RSS::Tree> object at the root of the tree would
+override this method to perform appropriate rendering, which will then
+be inherited by the entire tree.
+
+=item $node->render_default($item)
+
+This method provides a sensible default way to render RSS items.  It
+returns the item's content (that is, C<$item-E<gt>content>) if is has
+any, otherwise it returns the item's description (that is,
+C<$item-E<gt>description).
 
 =item $node->uri_for($item)
 
 Returns the URI for the given item.  This method returns
-C<$item-E<gt>link>, but certain RSS feeds may store the URI in a
-different place.  A subclass may override this method to return the
-correct URI.
+C<$item-E<gt>link>, but certain oddball RSS feeds may store the URI in
+a different place (such as the C<guid> field).  A subclass may
+override this method to return the correct URI.
+
+=back
+
+=head1 CONVENIENCE METHODS
+
+=over 4
 
 =item $node->new_element(...)
 
-This method is a convenience wrapper for the C<new_from_lol> method of
-the C<HTML::Element> class, which is C<require>d when this method is
-called.  The arguments to this method are wrapped in an array
-reference, which is passed to C<new_from_lol>.  Example:
+This method is a convenience wrapper for the C<new_from_lol>
+constructor of the C<HTML::Element> class.  The arguments to this
+method are wrapped in an array reference, which is passed to
+C<new_from_lol>.  Example:
 
     my $elem = $self->new_element('p', 'This is ', [ 'i', 'italicized' ], ' text');
 
@@ -292,5 +338,23 @@ simply returns C<$context-E<gt>findnodes($path)> after replacing
 C<"%s"> escape sequences in C<$path> by an XPath expression for the
 classes in C<@classes>.  See C<RSS::Tree::HtmlDocument> for more
 details.
+
+Conceivably a future version of C<RSS::Tree> might permit alternate
+means of finding nodes other than XPath.
+
+=item $node->remove($context, $path [, @classes ]);
+
+This method is an alternate entry point for the node-removing
+functionality of the C<RSS::Tree::HtmlDocument> class.  In short, the
+nodes returned by C<$node-E<gt>find($context, $path, @classes)> are
+removed from the document to which they belong.
+
+=item $node->truncate($context, $path, [, @classes ]);
+
+This method is an alternate entry point for the node-truncating
+functionality of the C<RSS::Tree::HtmlDocument> class.  In short, the
+nodes returned by C<$node-E<gt>find($context, $path, @classes)>, along
+with the following sibling elements of each, are removed from the
+document to which they belong.
 
 =back

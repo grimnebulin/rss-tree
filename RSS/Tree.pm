@@ -27,7 +27,7 @@ sub new {
 
     my $self = $class->SUPER::new($param->('name', 'title'));
 
-    $self->{$_} = $param->($_) for qw(feed agent_id keep_enclosure keep_guid);
+    $self->{$_} = $param->($_) for qw(feed limit agent_id keep_enclosure keep_guid);
 
     $self->{cache} = RSS::Tree::Cache->new(
         $self, $param->('cache_dir', 'feed_cache_seconds', 'item_cache_seconds')
@@ -52,6 +52,10 @@ sub TITLE {
 }
 
 sub FEED {
+    undef;
+}
+
+sub LIMIT {
     undef;
 }
 
@@ -83,12 +87,16 @@ sub run {
     my ($self, $name) = @_;
     my $rss   = XML::RSS->new->parse($self->{cache}->cache_feed);
     my $items = $rss->{items};
+    my $limit = $self->{limit};
     my $index = 0;
+    my $count = 0;
     my $title;
 
-    defined $name or $name = $self->name;
+    defined $name  or $name  = $self->name;
+    defined $limit or $limit = 9e99;
 
     while ($index < @$items) {
+        splice(@$items, $index), last if ++$count >= $limit;
         my $item    = $items->[$index];
         my $wrapper = RSS::Tree::Item->new($self, $item);
         my $node    = $self->handles($wrapper, $name);
@@ -185,7 +193,7 @@ RSS::Tree - a tree of nodes for filtering and transforming RSS items
 =head1 SYNOPSIS
 
     package MyTree;
-    use base qw(RSS::Tree);
+    use parent qw(RSS::Tree);
 
     use constant {
         NAME  => 'stuff',

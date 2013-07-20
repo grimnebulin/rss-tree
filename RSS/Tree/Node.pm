@@ -65,6 +65,14 @@ sub match_creator {
     return shift->_match('creator', @_);
 }
 
+sub match_category {
+    my ($self, $regex) = @_;
+    $self->{test} =
+        eval 'sub { 0 < grep { _trim($_) =~ /$regex/oi } $_[0]->categories }';
+    die $@ if $@;
+    return $self;
+}
+
 sub _match {
     my ($self, $field, $regex) = @_;
     $field =~ /^[^\W\d]\w*\z/ or die qq(Invalid field "$field"\n);

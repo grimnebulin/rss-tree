@@ -29,6 +29,11 @@ sub creator {
     return shift->{item}{dc}{creator};
 }
 
+sub categories {
+    my $cat = shift->{item}{category};
+    return ref $cat ? @$cat : $cat;
+}
+
 sub _uri {
     my $self = shift;
     return $self->{parent}->uri_for($self);

@@ -134,7 +134,7 @@ sub _postprocess_item {
     my ($self, $item) = @_;
     delete $item->{guid}      if !$self->{keep_guid};
     delete $item->{enclosure} if !$self->{keep_enclosure};
-    $self->postprocess_item;
+    $self->postprocess_item($item);
 }
 
 sub postprocess_item {

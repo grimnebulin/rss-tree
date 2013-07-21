@@ -101,8 +101,8 @@ sub run {
         my $wrapper = RSS::Tree::Item->new($self, $item);
         my $node    = $self->handles($wrapper, $name);
         if ($node && $node->name eq $name) {
-            _set_content($item, $self->{cache}->cache_item($node, $wrapper));
             $self->_postprocess_item($item);
+            _set_content($item, $self->{cache}->cache_item($node, $wrapper));
             ++$index;
             defined $title or $title = $node->title;
         } else {

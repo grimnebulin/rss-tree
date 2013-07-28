@@ -45,21 +45,6 @@ sub uri {
     return @_ ? URI->new_abs($_[0], $self->_uri) : URI->new($self->_uri);
 }
 
-# It's not really clear that this method is still necessary...
-
-sub absolutize {
-    my ($self, $element, @attr) = @_;
-
-    my @uri = map {
-        my $uri = $self->uri($element->attr($_));
-        $element->attr($_, $uri->as_string);
-        $uri;
-    } @attr;
-
-    return wantarray ? @uri : $uri[0];
-
-}
-
 sub description {
     my $self = shift;
     return exists $self->{description}

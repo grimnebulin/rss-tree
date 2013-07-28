@@ -113,7 +113,10 @@ sub run {
     $rss->{channel}{title} = $rss->{channel}{description} =
         defined $title ? $title : $name;
 
-    return $rss->as_string;
+    # return $rss->as_string;
+    my $out = $rss->as_string;
+    $out =~ s/^(.+encoding=)(['"])\2/$1$2UTF-8$2/;
+    return $out;
 
 }
 

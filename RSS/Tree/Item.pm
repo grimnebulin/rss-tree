@@ -9,12 +9,16 @@ sub new {
     bless { parent => $parent, item => $item }, $class;
 }
 
+sub unwrap {
+    return $_[0]{item};
+}
+
 sub title {
     return $_[0]{item}{title};
 }
 
 sub set_title {
-    $_[0]{item}{title} = $_[1];
+    defined $_[1] ? ($_[0]{item}{title} = $_[1]) : delete $_[0]{item}{title};
     return $_[0];
 }
 
@@ -23,7 +27,7 @@ sub link {
 }
 
 sub set_link {
-    $_[0]{item}{link} = $_[1];
+    defined $_[1] ? ($_[0]{item}{link} = $_[1]) : delete $_[0]{item}{link};
     return $_[0];
 }
 
@@ -32,7 +36,7 @@ sub guid {
 }
 
 sub set_guid {
-    $_[0]{item}{guid} = $_[1];
+    defined $_[1] ? ($_[0]{item}{guid} = $_[1]) : delete $_[0]{item}{guid};
     return $_[0];
 }
 
@@ -41,7 +45,7 @@ sub author {
 }
 
 sub set_author {
-    $_[0]{item}{author} = $_[1];
+    defined $_[1] ? ($_[0]{item}{author} = $_[1]) : delete $_[0]{item}{author};
     return $_[0];
 }
 
@@ -50,7 +54,7 @@ sub creator {
 }
 
 sub set_creator {
-    $_[0]{item}{dc}{creator} = $_[1];
+    defined $_[1] ? ($_[0]{item}{dc}{creator} = $_[1]) : delete $_[0]{item}{dc}{creator};
     return $_[0];
 }
 
@@ -154,6 +158,15 @@ content, as well as of the web page linked to by the item.
 
 =over 4
 
+=item $item->unwrap
+
+=back
+
+Returns the wrapped C<XML::RSS> item, an unblessed hash reference.
+See that class's documentation for details.
+
+=over 4
+
 =item $item->title
 =item $item->link
 =item $item->guid
@@ -180,7 +193,9 @@ field (which may be a string or an array reference) directly.
 =back
 
 These methods set the corresponding fields of the underlying
-C<XML::RSS> object and return C<$item>.
+C<XML::RSS> item and return C<$item>.  For all but C<set_categories>,
+if the first argument is missing or C<undef>, then that field is
+deleted from the item.
 
 =over 4
 

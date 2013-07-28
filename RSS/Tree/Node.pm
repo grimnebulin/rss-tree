@@ -138,6 +138,14 @@ sub truncate {
     return $self;
 }
 
+sub wrap {
+    my ($self, $wrappee, $wrapper) = @_;
+    $wrapper = $self->new_element($wrapper) if !ref $wrapper;
+    $wrappee->preinsert($wrapper);
+    $wrapper->push_content($wrappee);
+    return $wrapper;
+}
+
 sub _children {
     return @{ shift->{children} };
 }

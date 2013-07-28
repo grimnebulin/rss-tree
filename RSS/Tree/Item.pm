@@ -10,28 +10,59 @@ sub new {
 }
 
 sub title {
-    return shift->{item}{title};
+    return $_[0]{item}{title};
+}
+
+sub set_title {
+    $_[0]{item}{title} = $_[1];
+    return $_[0];
 }
 
 sub link {
-    return shift->{item}{link};
+    return $_[0]{item}{link};
+}
+
+sub set_link {
+    $_[0]{item}{link} = $_[1];
+    return $_[0];
 }
 
 sub guid {
-    return shift->{item}{guid};
+    return $_[0]{item}{guid};
+}
+
+sub set_guid {
+    $_[0]{item}{guid} = $_[1];
+    return $_[0];
 }
 
 sub author {
-    return shift->{item}{author};
+    return $_[0]{item}{author};
+}
+
+sub set_author {
+    $_[0]{item}{author} = $_[1];
+    return $_[0];
 }
 
 sub creator {
-    return shift->{item}{dc}{creator};
+    return $_[0]{item}{dc}{creator};
+}
+
+sub set_creator {
+    $_[0]{item}{dc}{creator} = $_[1];
+    return $_[0];
 }
 
 sub categories {
     my $cat = shift->{item}{category};
     return ref $cat ? @$cat : $cat;
+}
+
+sub set_categories {
+    my ($self, @newval) = @_;
+    $self->{item}{category} = @newval != 1 ? \@newval : $newval[1];
+    return $self;
 }
 
 sub _uri {
@@ -128,24 +159,45 @@ content, as well as of the web page linked to by the item.
 =item $item->guid
 =item $item->author
 =item $item->creator
+=item $item->categories
 
 =back
 
-These methods return the corresponding field of the underlying
-C<XML::RSS> item.
+These methods return the corresponding fields of the underlying
+C<XML::RSS> item, except for the C<categories> method, which returns a
+list of the underlying item's categories instead of returning the
+field (which may be a string or an array reference) directly.
+
+=over 4
+
+=item $item->set_title($new_title)
+=item $item->set_link($new_link)
+=item $item->set_guid($new_guid)
+=item $item->set_author($new_author)
+=item $item->set_creator($new_creator)
+=item $item->set_categories(@new_categories)
+
+=back
+
+These methods set the corresponding fields of the underlying
+C<XML::RSS> object and return C<$item>.
 
 =over 4
 
 =item $item->uri([ $relative_uri ])
 
 Without an argument, returns a C<URI> object for the page linked to by
-this item.  With an argument, returns a C<URI> object formed by using
-the provided C<$relative_url>, relative to this item's URI.
+this item.  The link may not be the same as this object's C<link>
+field if this object's parent C<RSS::Tree> object has overloaded its
+C<uri_for> method.
+
+With an argument, returns a C<URI> object formed by using the provided
+C<$relative_url>, relative to this item's URI.
 
 =item $item->description
 =item $item->content
 
-These methods returns a C<RSS::Tree::HtmlDocument> object which wrap
+These methods return a C<RSS::Tree::HtmlDocument> object which wraps
 the value of this item's "description" and "content" fields,
 respectively.
 

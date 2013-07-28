@@ -101,7 +101,7 @@ sub run {
         my $wrapper = RSS::Tree::Item->new($self, $item);
         my $node    = $self->handles($wrapper, $name);
         if ($node && $node->name eq $name) {
-            $self->_postprocess_item($item);
+            $self->_postprocess_item($wrapper);
             _set_content($item, $self->{cache}->cache_item($node, $wrapper));
             ++$index;
             defined $title or $title = $node->title;
@@ -135,9 +135,9 @@ sub fetch {
 
 sub _postprocess_item {
     my ($self, $item) = @_;
-    delete $item->{guid}      if !$self->{keep_guid};
-    delete $item->{enclosure} if !$self->{keep_enclosure};
     $self->postprocess_item($item);
+    $item->set_guid(undef) if !$self->{keep_guid};
+    delete $item->unwrap->{enclosure} if !$self->{keep_enclosure};
 }
 
 sub postprocess_item {

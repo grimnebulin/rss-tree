@@ -276,6 +276,14 @@ The URL for the source RSS feed.  It is not an error for it to be
 undefined, but if it is, an exception will be raised if the C<run>
 method is ever called.
 
+=item limit
+
+The maximum number of items that will be taken from the source RSS
+feed.  If undefined, which is the default, all items will be taken.
+This parameter might be useful for feeds which retain a large number
+of items, more than one wishes to incur the cost of rendering
+repeatedly.
+
 =item cache_dir
 
 The directory where the cache file for this feed will be stored.  If
@@ -328,6 +336,7 @@ uppercased.  Explicitly:
 =item NAME
 =item TITLE
 =item FEED
+=item LIMIT
 =item CACHE_DIR
 =item FEED_CACHE_SECONDS
 =item ITEM_CACHE_SECONDS

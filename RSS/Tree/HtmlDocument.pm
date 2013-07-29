@@ -20,14 +20,6 @@ sub find {
     return _find_all($self->_tree, $path, @classes);
 }
 
-sub open {
-    my ($self, $uri) = @_;
-    require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new(
-        URI->new_abs($uri, $self->{uri}), $self->{downloader}
-    );
-}
-
 sub remove {
     my ($self, $path, @classes) = @_;
     _remove($self->_tree, $path, @classes);
@@ -38,6 +30,14 @@ sub truncate {
     my ($self, $path, @classes) = @_;
     _truncate($self->_tree, $path, @classes);
     return $self;
+}
+
+sub open {
+    my ($self, $uri) = @_;
+    require RSS::Tree::HtmlDocument::Web;
+    return RSS::Tree::HtmlDocument::Web->new(
+        URI->new_abs($uri, $self->{uri}), $self->{downloader}
+    );
 }
 
 sub _content {
@@ -117,6 +117,10 @@ RSS::Tree::HtmlDocument - Wrapper for an HTML document, or a fragment of one
 
     my @summaries = $document->find('//div[%s]', 'summary');
 
+    $document->remove('//script');
+
+    $document->truncate('//div[@id="comment-divider"]');
+
     print "My document: $document";  # stringification
 
 =head1 DESCRIPTION
@@ -167,6 +171,18 @@ This substitution is performed by a simple call to C<sprintf>, so any
 extra arguments are discarded, and any extra C<"%s"> sequences are
 deleted.
 
+=item $doc->remove($xpath [, @classes ])
+
+Removes all elements matching C<$xpath> and C<@classes>, using the
+same element-finding functionality as the C<find> method, above.
+Returns C<$doc>.
+
+=item $doc->truncate($xpath [, @classes ])
+
+Removes all elements matching C<$xpath> and C<@classes>, using the
+same element-finding functionality as the C<find> method, above, as
+well as the following sibling elements of each.  Returns C<$doc>.
+
 =item $doc->open($uri)
 
 Returns a new C<RSS::Tree::HtmlDocument::Web> object that refers to
@@ -175,18 +191,17 @@ relative to the URI of this document.
 
 =back
 
-This class provides convenient stringification logic.  Until the
-C<find> method is called, an object of this class stringifies to
-exactly the HTML text that it was initialized with.  The C<find>
-method exposes the tree structure of the wrapped HTML fragment; using
-the returned nodes, client code is able to add nodes to the tree and
-delete and rearrange existing nodes.  The stringification of this
-object is intended to reflect such changes, and so after the C<find>
-method has been called, the object stringifies to the concatenation of
-all of the nodes returned by the tree's C<guts> method (see
-C<HTML::TreeBuilder>).  C<HTML::Element> objects in this node list are
-stringified by calling the C<as_HTML> method; text nodes are
-stringified as-is.
+This class provides convenient stringification logic.  Until one of
+the C<find>, C<remove>, or C<truncate> methods are called, an object
+of this class stringifies to exactly the HTML text that it was
+initialized with.  The aforementioned methods expose the tree
+structure of the wrapped HTML fragment.  The stringification of this
+object is intended to reflect changes to the tree structure, and so
+after any of those methods have been called, the object stringifies to
+the concatenation of all of the nodes returned by the tree's C<guts>
+method (see C<HTML::TreeBuilder>).  C<HTML::Element> objects in this
+node list are stringified by calling that classes's C<as_HTML> method;
+other nodes are stringified in the default manner.
 
 For example, consider an object C<$doc> of this class that wraps the
 following HTML fragment:
@@ -198,7 +213,7 @@ following HTML fragment:
 
 Then the following code:
 
-    $doc->find('//span[@id="one"]')->shift->detach;
+    $doc->remove('//span[@id="one"]');
     print $doc;
 
 ...will print "<div><span id='two'>Two</span></div>" (possibly modulo

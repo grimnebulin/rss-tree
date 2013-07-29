@@ -1,8 +1,9 @@
 # SUMMARY
 
-`RSS::Tree` is a Perl framework that allows one to divide a single
-incoming RSS feed into a tree of outgoing RSS feeds, and/or apply
-transformations to the feed's content at the same time.
+`RSS::Tree` is a Perl framework that allows one to perform filters and
+transformations on the contents of RSS feeds, as well as split a
+single incoming feed into one or more outgoing feeds.
+
 
 # MOTIVATION
 
@@ -15,25 +16,100 @@ to see as much article content as is convenient directly inside my
 feed reader.
 
 `RSS::Tree` is the result of my efforts to make reading my feeds more
-efficient.  I've been using it happily for several months.  When I
-subscribe to a new feed and discover that I'd like to filter or
-transform it in some way, writing a new class to do the job often
-takes less than a minute.
+efficient.  When I subscribe to a new feed and discover that I'd like
+to filter or transform it in some way, writing a new class to do the
+job often takes less than a minute.
 
 # EXAMPLES
 
-This is a list of examples of the use of `RSS::Tree`, in approximately
-increasing order of complexity.  All example code is assumed to reside
-in a Perl module that begins with code similar to the following:
+This is a list of examples of the use of `RSS::Tree`.  All example
+code is assumed to reside in a Perl module that begins with code
+similar to the following:
 
     package MyFeed;
-    use base qw(RSS::Tree);
+    use parent qw(RSS::Tree);
     use strict;
     use constant {
         NAME  => 'myfeed',
         TITLE => 'Source Feed',
         FEED  => 'http://xsourcefeed.com/rss/',
     };
+
+The feed can be accessed by a simple Perl command:
+
+    $ perl -MMyFeed -e 'print MyFeed->new->run'
+
+## Transform Items
+
+### Replace feed content with web content
+
+Commonly, I want an alternate version of an existing feed where the
+content is taken from the web pages linked to by the original feed's
+items.  For example, I might examine the web site linked to by the
+original feed using a tool like [Firebug](https://getfirebug.com/) and
+discover that the main content of all pages is found in a <div>
+element with id "main-content".  All I need to do is write a render
+method for my class:
+
+    sub render {
+        my ($self, $item) = @_;
+        return $item->page->find('//div[@id="main-content"]');
+    }
+
+Or perhaps the page content resides in a <div> element that doesn't
+have a particular id, but has a class "articleBody".  That's just as
+easy to grab:
+
+    return $item->page->find('//div[%s]', 'articleBody');
+
+The first argument to the find method is an augmented XPath
+expression.  `%s` format specifiers are expanded into XPath predicates
+that match the classes named by the remaining arguments.
+
+### Modify items
+
+Perhaps a feed supplies items that are fine on their own, but which
+contain links to share the items on Facebook, Twitter, etc, which I'd
+just as soon not see--they take up valuable vertical real estate.
+Examining the feed source, I see that such links are found in a
+top-level paragraph that has a class "share-links".  It's easy to
+remove them:
+
+    sub render {
+        my ($self, $item) = @_;
+        return $item->content->remove('p[%s]', 'share-links');
+    }
+
+Another feed has items with images that have humorous mouseover
+captions, but I'm a keyboard-driven reader and don't want to have to
+keep positioning my cursor over the images to read them.  The following
+rendering routine appends a div containing the italicized mouseover
+text to each image that has it:
+
+    sub render {
+        my ($self, $item) = @_;
+        for my $img ($item->content->find('//img[@title]')) {
+            $img->postinsert(
+                $self->new_element('div', [ 'i', $img->attr('title') ])
+            );
+        }
+    }
+
+Yet another feed has items that are reviews of movies, TV shows, video
+games, etc, and each links to a page that grades the object of the
+review on a scale from A to F.  I'd rather see the grade in my feed
+reader rather than having to click through.  Examining the page
+source, I find that the grade, if it exists, is found in a <span>
+element with the class "grade":
+
+    sub render {
+        my ($self, $item) = @_;
+        my ($grade) = $item->page->find('//span[%s]', 'grade');
+        return (
+            $grade && $self->new_element('div', 'Grade: ', $grade->as_text),
+            $self->render_default($item)
+        );
+    }
 
 ## Filter Items
 
@@ -45,158 +121,60 @@ author.
         return $item->author =~ /Good Author/;
     }
 
-Now I create the CGI program that serves up my new feed:
-
-    $ perl -MMyFeed -e 'MyFeed->new->write_programs'
-
-This command creates a program in the current directory called
-`myfeed.pl`.  When invoked, that program downloads the source feed,
-filters out items whose author is not "Good Author," and delivers the
-rest.
-
-## Transform Items
-
-`RSS::Tree` provides a convenient way to manipulate an item's HTML
-content, as well as that of the page it references, using XPath.
-
-### Remove Ads
-
-One of the feeds I read regularly incorporates annoyingly large banner
-ads.  Examining the feed's content, I find that the ads are rendered
-by an `<img>` HTML tag whose `src` attribute includes the string
-`quadrupleclick`.  I want to remove any `<p>` elements from the item's
-description that have such an image as a descendant.
-
-    sub render {
-        my ($self, $item) = @_;
-        $_->detach for $item->content->find(
-            '//p[descendant::img[contains(@src,"quadrupleclick")]]'
-        );
-        return $item->content;
-    }
-
-### Add Content
-
-Another of my feeds is from a webcomic that often includes a secondary
-joke in the `title` attribute of the strip's `<img>` element.  I'm too
-lazy to hover my cursor over the image long enough to see the message;
-I'd rather just show the message below the image, in italics.
-
-    sub render {
-        my ($self, $item) = @_;
-        my ($image) = $item->description->find('//img');
-        $image->postinsert(
-            $self->new_element('p', [ 'i', $image->attr('title') ])
-        ) if $image;
-        return $item->description;
-    }
-
-### Incorporate Content From Linked Page
-
-Many feeds provide brief snippets of the content of the page they're
-linked to.  Others provide essentially no content at all; I need to
-visit the linked page to see anything.  In either case, I'd rather
-just read all of the content in my RSS reader.  `RSS::Tree` and XPath
-make this easy.  I only need to examine the structure of the pages on
-the site linked to by the items (Firebug is very helpful here), and
-then formulate an appropriate XPath expression.
-
-Many webcomics are easy to extract into a feed:
-
-    sub render {
-        my ($self, $item) = @_;
-        return $item->page->find('//div[@id="comic"]/img');
-    }
-
-Textual content is just as easy:
-
-    sub render {
-        my ($self, $item) = @_;
-        return $item->page->find('//div[%s]', 'body');
-    }
-
-For another feed, I want to pull in all `<p>` child elements of the
-`<div>` element with a class of "entry", but only the elements that
-have no attributes.
-
-    sub render {
-        my ($self, $item) = @_;
-        return $item->page->find('//div[%s]/p[not(attribute::*)]', 'entry');
-    }
-
-A slightly more complicated example.  I want to include all content on
-the linked page from the `<div class="article_body">` element, but
-only the `<p>`, `<ul>`, `<ol>`, and `<blockquote>` children of that
-element.
-
-    sub render {
-        my ($self, $item) = @_;
-        return $item->page->find(
-            '//div[%s]/*[self::p or self::ul or self::ol or self::blockquote]',
-            'article_body'
-        );
-    }
-
-An even more complicated example.  A certain feed I read includes only
-brief snippets of the linked page.  Normally I would simply pull in
-the page's content as described above, but some articles on this site
-are very long, and some incorporate a large number of images or
-embedded videos.  In such cases, I want to truncate the page content
-at the page's "fold" (indicated by a `<div>` element with an `id` of
-"more").  In either case, I first want to truncate the page content at
-the div that has a class of "Tags".
-
-    my $EMBED_LIMIT = 3;
-
-    my $TEXT_LIMIT = 2000;
-
-    sub render {
-        my ($self, $item) = @_;
-        my ($body) = $item->page->find('//div[%s]', 'Entry_Body') or return;
-
-        $self->_truncate($body, 'child::div[%s]', 'Tags');
-        $self->_truncate($body, '//div[@id="more"]') if _body_too_long($body);
-
-        return $body;
-
-    }
-
-    sub _truncate {
-        my ($self, $context, @xpath) = @_;
-        for my $node ($self->find($context, @xpath)) {
-            $node->parent->splice_content($node->pindex);
-        }
-    }
-
-    sub _body_too_long {
-        my $body = shift;
-        return $body->findnodes('//img|//embed|//iframe')->size > $EMBED_LIMIT
-            || length($body->as_trimmed_text) > $TEXT_LIMIT;
-    }
+This will cause items from the source feed, other than those from Good
+Author, to be discarded.
 
 ## Split Items Into Separate Feeds
 
-Suppose that the source feed mixes together many topics--various types
-of popular media, say--that I would prefer to read in separate feeds.
+Or perhaps rather than discard items not written by an author I like,
+I'd rather split the source feed into two separate feeds: one with
+items written by the author, and one for items written by anyone else.
+That way, if I fall too far behind in my reading, I can discard the
+backlogged items in the "everyone else" feed without losing any items
+from the author I like.
+
+In this case, I need only override the `init` method to add a second
+node to my tree:
 
     sub init {
         my $self = shift;
         $self->add(
-            RSS::Tree::Node->new('tv', 'TV')->match_title('^TV:'),
-            RSS::Tree::Node->new('movies', 'Movies')->match_title('^Film:'),
-            RSS::Tree::Node->new('books', 'Books')->match_title('^Book:'),
+            RSS::Tree::Node->new(
+                'goodauthor', 'Good Author'
+            )->match_author('Good Author')
         );
     }
 
-Now I can create the CGI programs that serve up the various subfeeds
-I've described:
+Now, if I execute
 
-    $ perl -MMyFeed -e 'MyFeed->new->write_programs'
+    $ perl -MMyFeed -e 'MyFeed->new->run("goodauthor")'
 
-This command creates programs `tv.pl`, `movies.pl`, `books.pl`, and
-`myfeed.pl` in the current directory.  `tv.pl` shows only those items
-from the source feed whose title matches the regular expression
-`/^TV:/`; `movies.pl` and `books.pl` shows items whose titles match
-`/^Film:/` and `/^Book:/`, respectively; and `myfeed.pl` shows items
-meeting none of those criteria.
+...I'll see only the items from the author I like, and
+
+    $ perl -MMyFeed -e 'MyFeed->new->run'
+
+...will output the items from everyone else.
+
+Here's a more complicated example that constructs a multilevel tree:
+
+    sub init {
+        my $self = shift;
+        $self->add(
+            RSS::Tree::Node->new('tv', 'TV')->match_title('^TV:')->add(
+                RSS::Tree::Node->new('bb', 'Breaking Bad')
+                               ->match_title('Breaking Bad'),
+                RSS::Tree::Node->new('wire', 'The Wire')
+                               ->match_title('The Wire')
+            ),
+            RSS::Tree::Node->new('music', 'Music')->match_title('^Music:'),
+            RSS::Tree::Node->new('film', 'Film')->match_title('^Film:')
+        );
+    }
+
+If I were to define a `render` method on the main tree class, it would
+be inherited by all of the nodes in the tree.  I would need to define
+a subclass of `RSS::Tree::Node` if I wanted different nodes in the
+tree to render themselves in a different way, or for more complicated
+matching than simple regex matching against items' creator, title,
+author, etc.
 

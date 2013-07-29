@@ -1,6 +1,5 @@
 package RSS::Tree::Item;
 
-use URI;
 use strict;
 
 

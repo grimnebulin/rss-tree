@@ -1,9 +1,7 @@
 # SUMMARY
 
-`RSS::Tree` is a Perl framework that allows one to perform filters and
-transformations on the contents of RSS feeds, as well as split a
-single incoming feed into one or more outgoing feeds.
-
+`RSS::Tree` is a Perl framework that allows one to filter, transform,
+and split the contents of RSS feeds.
 
 # MOTIVATION
 
@@ -121,8 +119,8 @@ author.
         return $item->author =~ /Good Author/;
     }
 
-This will cause items from the source feed, other than those from Good
-Author, to be discarded.
+This will cause items from the source feed other than those from Good
+Author to be discarded.
 
 ## Split Items Into Separate Feeds
 
@@ -178,7 +176,7 @@ constructor--so items handled by it are simply discarded.)
 If I were to define a `render` method on the main tree class, it would
 be inherited by all of the nodes in the tree.  I would need to define
 a subclass of `RSS::Tree::Node` if I wanted different nodes in the
-tree to render themselves in a different way, or for more complicated
+tree to render themselves in different ways, or for more complicated
 matching than simple regex matching against items' creator, title,
 author, etc.
 

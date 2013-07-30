@@ -390,4 +390,16 @@ nodes returned by C<$node-E<gt>find($context, $path, @classes)>, along
 with the following sibling elements of each, are removed from the
 document to which they belong.
 
+=item $node->wrap($wrappee, $wrapper)
+
+The element C<$wrappee> is appended to the element C<$wrapper>, which
+then takes the place of C<$wrappee> in the document to which
+C<$wrappee> belongs.  C<$wrapper> is returned.
+
+If C<$wrapper> is not a reference, it is first transformed into an
+empty C<HTML::Element> object with C<$wrapper> as its tag name.  That
+allows one to write, for example:
+
+    $node->wrap($element, 'div');
+
 =back

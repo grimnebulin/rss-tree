@@ -1,0 +1,11 @@
+This directory contains some real-world examples of RSS::Tree,
+selected from the approximately fifty classes that I use to help drive
+my RSS feed consumption.
+
+Most of those classes pull web content to replace the original feed
+content, bypassing legitimate pageviews, and many remove
+advertisements, both activities I feel ever-so-slightly guilty about.
+That guilt is more than mitigated by the time savings I enjoy, as well
+as the glow of accomplishment from hacking.  Nevertheless, I've chosen
+these examples such that the above two activities are showcased in a
+minimal way.

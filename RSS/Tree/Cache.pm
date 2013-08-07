@@ -105,7 +105,8 @@ sub _cache {
     my ($self, $generate, $duration, @keys) = @_;
 
     return $generate->() if !defined $duration
-                         || !defined(my $dbm = $self->_dbm);
+                         || !defined(my $dbm = $self->_dbm)
+                         || grep { !defined } @keys;
 
     _lock_dbm($dbm);
 

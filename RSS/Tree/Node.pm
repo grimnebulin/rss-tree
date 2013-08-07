@@ -400,6 +400,6 @@ If C<$wrapper> is not a reference, it is first transformed into an
 empty C<HTML::Element> object with C<$wrapper> as its tag name.  That
 allows one to write, for example:
 
-    $node->wrap($element, 'div');
+    my $div = $node->wrap($element, 'div');
 
 =back

@@ -91,7 +91,12 @@ text to each image that has it:
                 $self->new_element('div', [ 'i', $img->attr('title') ])
             );
         }
+        return;
     }
+
+(Here I mutate the item content in-place, and return nothing from the
+`render` method, so that the changed content is presented as the
+feed's output.)
 
 Yet another feed has items that are reviews of movies, TV shows, video
 games, etc, and each links to a page that grades the object of the

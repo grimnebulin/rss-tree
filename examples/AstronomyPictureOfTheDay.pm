@@ -6,7 +6,7 @@ use strict;
 use constant {
     NAME  => 'apod',
     TITLE => 'APOD',
-    FEED  => 'http://antwrp.gsfc.nasa.gov/apod.rss',
+    FEED  => 'http://apod.nasa.gov/apod.rss',
 };
 
 #

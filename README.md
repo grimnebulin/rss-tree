@@ -150,11 +150,11 @@ node to my tree:
 
 Now, if I execute
 
-    $ perl -MMyFeed -e 'MyFeed->new->run("goodauthor")'
+    $ perl -MMyFeed -e 'print MyFeed->new->run("goodauthor")'
 
 ...I'll see only the items from the author I like, and
 
-    $ perl -MMyFeed -e 'MyFeed->new->run'
+    $ perl -MMyFeed -e 'print MyFeed->new->run'
 
 ...will output the items from everyone else.
 

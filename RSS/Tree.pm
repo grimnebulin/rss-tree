@@ -113,7 +113,7 @@ sub run {
     defined $limit or $limit = 9e99;
 
     while ($index < @$items) {
-        splice(@$items, $index), last if ++$count >= $limit;
+        splice(@$items, $index), last if ++$count > $limit;
         my $item    = $items->[$index];
         my $wrapper = RSS::Tree::Item->new($self, $item);
         my $node    = $self->handles($wrapper, $name);

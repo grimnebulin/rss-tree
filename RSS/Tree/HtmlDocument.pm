@@ -32,6 +32,11 @@ sub new {
     }, $class;
 }
 
+sub guts {
+    my $self = shift;
+    return $self->_tree->guts;
+}
+
 sub find {
     my ($self, $path, @classes) = @_;
     return _find_all($self->_tree, $path, @classes);
@@ -130,6 +135,8 @@ RSS::Tree::HtmlDocument - Wrapper for an HTML document, or a fragment of one
 
 =head1 SYNOPSIS
 
+    my @elements = $document->guts;
+
     my @paragraphs = $document->find('//p');
 
     my @summaries = $document->find('//div[%s]', 'summary');
@@ -153,6 +160,14 @@ client code, so the class's constructor is not documented here.
 =head1 METHODS
 
 =over 4
+
+=item $doc->guts
+
+Calling this method causes the enclosed HTML fragment to be parsed
+into a tree structure by the C<HTML::TreeBuilder::XPath> class, if it
+has not already been so parsed, and returns the result of calling the
+C<guts> method on that tree.  See that class for more details,
+particularly the difference between scalar and list context.
 
 =item $doc->find($xpath [, @classes ])
 
@@ -209,8 +224,8 @@ relative to the URI of this document.
 =back
 
 This class provides convenient stringification logic.  Until one of
-the C<find>, C<remove>, or C<truncate> methods are called, an object
-of this class stringifies to exactly the HTML text that it was
+the C<guts>, C<find>, C<remove>, or C<truncate> methods are called, an
+object of this class stringifies to exactly the HTML text that it was
 initialized with.  The aforementioned methods expose the tree
 structure of the wrapped HTML fragment.  The stringification of this
 object is intended to reflect changes to the tree structure, and so

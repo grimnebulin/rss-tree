@@ -163,7 +163,12 @@ sub postprocess_item {
 
 sub write_programs {
     my ($self, %opt) = @_;
-    $self->_write_program(ref $self, exists $opt{'use'} ? $opt{'use'} : ());
+
+    my ($perl) = grep { -x } map { "$_/perl" } split /:/, $ENV{PATH}
+        or die "No perl binary found in PATH\n";
+
+    $self->_write_program(ref $self, $perl, exists $opt{'use'} ? $opt{'use'} : ());
+
 }
 
 sub _agent {

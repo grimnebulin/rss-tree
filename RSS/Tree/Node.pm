@@ -168,9 +168,9 @@ sub _children {
 }
 
 sub _write_program {
-    my ($self, $tree_class, @use_class) = @_;
+    my ($self, $tree_class, $perl, @use_class) = @_;
 
-    $_->_write_program($tree_class, @use_class) for $self->_children;
+    $_->_write_program($tree_class, $perl, @use_class) for $self->_children;
 
     return if !defined $self->{name};
 
@@ -179,7 +179,7 @@ sub _write_program {
     open my $fh, '>', $filename
         or die "Can't open file $filename for writing: $!\n";
 
-    print $fh "#!/usr/local/bin/perl -CO\n",
+    print $fh "#!$perl -CO\n",
               "# <your extra initialization here>\n",
               "use ", @use_class ? $use_class[0] : $tree_class, ";\n",
               "use strict;\n\n",

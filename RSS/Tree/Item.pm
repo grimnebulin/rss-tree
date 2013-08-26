@@ -81,7 +81,7 @@ sub categories {
 
 sub set_categories {
     my ($self, @newval) = @_;
-    $self->{item}{category} = @newval != 1 ? \@newval : $newval[1];
+    $self->{item}{category} = @newval != 1 ? \@newval : $newval[0];
     return $self;
 }
 

@@ -32,6 +32,10 @@ sub new {
     }, $class;
 }
 
+sub uri {
+    return shift->{uri};
+}
+
 sub guts {
     my $self = shift;
     return $self->_tree->guts;

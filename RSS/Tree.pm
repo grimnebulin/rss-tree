@@ -139,7 +139,7 @@ sub run {
 
 sub download {
     my ($self, $url) = @_;
-    my $response = $self->_agent->get($url);
+    my $response = $self->agent->get($url);
     return if !$response->is_success;
     return $self->decode_response($response);
 }
@@ -171,7 +171,7 @@ sub write_programs {
 
 }
 
-sub _agent {
+sub agent {
     my $self = shift;
     return $self->{agent} ||= LWP::UserAgent->new(
         defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
@@ -390,6 +390,11 @@ returns.  The default implementation does nothing, but subclasses may
 override it to perform additional initialization, such as adding child
 nodes.
 
+=item $tree->agent
+
+Returns the C<LWP::UserAgent> object used by this object, creating it
+if it does not already exist.
+
 =item $tree->run([ $name ])
 
 Fetches the RSS feed associated with this root node, and returns a
@@ -421,11 +426,6 @@ except those handled by the "foo" node.
 Downloads the given URL.  Returns a string containing the content of
 the URL, or C<undef> if the content could not be downloaded for any
 reason.
-
-Downloading is performed by an C<LWP::UserAgent> object that is
-instantiated and cached when this method is first called.  An
-exception will occur if the C<LWP::UserAgent> module is not
-available.
 
 =item $tree->decode_response($response)
 

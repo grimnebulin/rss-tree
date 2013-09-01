@@ -163,9 +163,13 @@ sub postprocess_item {
 
 sub write_programs {
     my ($self, %opt) = @_;
+    my $perl;
 
-    my ($perl) = grep { -x } map { "$_/perl" } split /:/, $ENV{PATH}
-        or die "No perl binary found in PATH\n";
+    for my $bin (map { "$_/perl" } split /:/, $ENV{PATH}) {
+        $perl = $bin, last if -x $bin;
+    }
+
+    defined $perl or die "No perl binary found in PATH\n";
 
     $self->_write_program(ref $self, $perl, exists $opt{'use'} ? $opt{'use'} : ());
 

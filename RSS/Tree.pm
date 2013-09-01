@@ -174,11 +174,15 @@ sub write_programs {
     my ($self, %opt) = @_;
     my $perl;
 
-    for my $bin (map { "$_/perl" } split /:/, $ENV{PATH}) {
+    require File::Spec;
+
+    for my $bin (map  { File::Spec->catfile($_, 'perl') }
+                 grep { File::Spec->file_name_is_absolute($_) }
+                 split /:/, $ENV{PATH}) {
         $perl = $bin, last if -x $bin;
     }
 
-    defined $perl or die "No perl binary found in PATH\n";
+    defined $perl or die "No appropriate perl binary found in PATH\n";
 
     $self->_write_program(ref $self, $perl, exists $opt{'use'} ? $opt{'use'} : ());
 

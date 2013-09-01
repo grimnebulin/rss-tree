@@ -147,6 +147,12 @@ sub download {
     return $self->decode_response($response);
 }
 
+sub new_page {
+    my ($self, $uri, $content) = @_;
+    require RSS::Tree::HtmlDocument;
+    return RSS::Tree::HtmlDocument->new($uri, $self, $content);
+}
+
 sub fetch {
     my ($self, $url) = @_;
     require RSS::Tree::HtmlDocument::Web;

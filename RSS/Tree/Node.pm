@@ -136,6 +136,12 @@ sub new_element {
     return HTML::Element->new_from_lol([ @_ ]);
 }
 
+sub new_page {
+    my ($self, $uri, $content) = @_;
+    require RSS::Tree::HtmlDocument;
+    return RSS::Tree::HtmlDocument->new($uri, $content);
+}
+
 sub find {
     my ($self, $context, $path, @classes) = @_;
     return $context->findnodes(
@@ -362,6 +368,12 @@ method are wrapped in an array reference, which is passed to
 C<new_from_lol>.  Example:
 
     my $elem = $self->new_element('p', 'This is ', [ 'i', 'italicized' ], ' text');
+
+=item $node->new_page($uri, $content)
+
+This method simply constructs and returns an
+C<RSS::Tree::HtmlDocument> object, passing C<$uri> and C<$content> to
+its constructor.  See that class for details.
 
 =item $node->find($context, $path [, @classes ])
 

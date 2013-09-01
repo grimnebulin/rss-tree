@@ -140,12 +140,6 @@ sub run {
 
 }
 
-sub new_page {
-    my ($self, $uri, $content) = @_;
-    require RSS::Tree::HtmlDocument;
-    return RSS::Tree::HtmlDocument->new($uri, $content);
-}
-
 sub _postprocess_item {
     my ($self, $item) = @_;
     $self->postprocess_item($item);

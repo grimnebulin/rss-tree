@@ -154,9 +154,9 @@ sub new_page {
 }
 
 sub fetch {
-    my ($self, $url) = @_;
+    my ($self, $uri) = @_;
     require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new($url, $self);
+    return RSS::Tree::HtmlDocument::Web->new($uri, $self);
 }
 
 sub _postprocess_item {

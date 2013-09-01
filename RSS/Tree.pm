@@ -140,23 +140,10 @@ sub run {
 
 }
 
-sub download {
-    my ($self, $url) = @_;
-    my $response = $self->agent->get($url);
-    return if !$response->is_success;
-    return $self->decode_response($response);
-}
-
 sub new_page {
     my ($self, $uri, $content) = @_;
     require RSS::Tree::HtmlDocument;
-    return RSS::Tree::HtmlDocument->new($uri, $self, $content);
-}
-
-sub fetch {
-    my ($self, $uri) = @_;
-    require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new($uri, $self);
+    return RSS::Tree::HtmlDocument->new($uri, $content);
 }
 
 sub _postprocess_item {
@@ -200,13 +187,21 @@ sub decode_response {
     return $response->decoded_content;
 }
 
+sub _download_item {
+    my ($self, $uri) = @_;
+    my $response = $self->agent->get($uri);
+    return if !$response->is_success;
+    return $self->decode_response($response, $uri);
+}
+
 sub _download_feed {
     my $self = shift;
     defined $self->{feed}
         or die "No RSS feed defined for class ", ref $self, "\n";
-    defined(my $content = $self->download($self->{feed}))
+    my $response = $self->agent->get($self->{feed});
+    $response->is_success
         or die "Failed to download RSS feed from $self->{feed}\n";
-    return $content;
+    return $response->decoded_content;
 }
 
 sub _set_content {
@@ -438,23 +433,19 @@ those handled by the "baz" node have been removed; and
 C<$root-E<gt>run('foo')> and C<$root-E<gt>run()> return all items
 except those handled by the "foo" node.
 
-=item $tree->download($url)
-
-Downloads the given URL.  Returns a string containing the content of
-the URL, or C<undef> if the content could not be downloaded for any
-reason.
-
-=item $tree->decode_response($response)
+=item $tree->decode_response($response, $uri)
 
 This method should return the decoded content of C<$response>, an
-C<HTTP::Response> object.  The default implementation simply returns
+C<HTTP::Response> object which was returned by an HTTP GET request to
+C<$uri>, the link to one of the items handled by this tree.
+
+The default implementation simply returns
 C<$response-E<gt>decoded_content()>, but a subclass may override this
 method if special handling is needed.
 
-=item $tree->fetch($url)
-
-Returns an C<RSS::Tree::HtmlDocument::Web> object through which the
-web page referenced by C<$url> can be accessed.
+The C<$uri> argument probably isn't normally useful, but is provided
+in case the source feed has links to multiple different web sites, and
+special handling is needed only for some of them.
 
 =item $tree->postprocess_item($item)
 

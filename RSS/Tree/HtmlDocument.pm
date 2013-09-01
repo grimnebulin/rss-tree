@@ -17,28 +17,52 @@ package RSS::Tree::HtmlDocument;
 # You should have received a copy of the GNU General Public License
 # along with RSS::Tree.  If not, see <http://www.gnu.org/licenses/>.
 
+use Scalar::Util;
 use URI;
 use overload '""' => '_as_str', fallback => 1;
 use strict;
 
 
 sub new {
-    my ($class, $uri, $downloader, $content) = @_;
+    my ($class, $uri, $content) = @_;
+    my $delayed = !Scalar::Util::blessed($content) && ref $content eq 'CODE';
+    $content = "$content" if !$delayed;
+
+    if (defined $uri) {
+        $uri = URI->new($uri);
+        defined $uri->scheme
+            or die "Cannot construct ", __PACKAGE__, " object with a relative URI\n";
+    }
+
     bless {
-        uri        => $uri,
-        downloader => $downloader,
-        exposed    => undef,
-        @_ >= 4 ? (content => $content) : (),
+        uri     => $uri,
+        content => $content,
+        delayed => $delayed,
+        exposed => undef,
     }, $class;
+
 }
 
 sub uri {
     return shift->{uri};
 }
 
+sub absolute_uri {
+    my ($self, $uri) = @_;
+
+    $uri = URI->new($uri);
+    return $uri if defined $uri->scheme;
+
+    defined $self->{uri}
+        or die "Cannot convert relative URI to absolute URI; this ",
+               ref $self, " object was not constructed with a URI\n";
+
+    return URI->new_abs($uri, $self->{uri});
+
+}
+
 sub guts {
-    my $self = shift;
-    return $self->_tree->guts;
+    return shift->_tree->guts;
 }
 
 sub find {
@@ -58,17 +82,12 @@ sub truncate {
     return $self;
 }
 
-sub open {
-    my ($self, $uri) = @_;
-    require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new(
-        URI->new_abs($uri, $self->{uri}), $self->{downloader}
-    );
-}
-
 sub _content {
     my $self = shift;
-    exists $self->{content} or $self->{content} = $self->_get_content;
+    if ($self->{delayed}) {
+        $self->{content} = "" . $self->{content}->();
+        $self->{delayed} = undef;
+    }
     return $self->{content};
 }
 
@@ -96,7 +115,7 @@ sub _render_tree {
 
 sub _render {
     return join "", map {
-        UNIVERSAL::isa($_, 'HTML::Element')
+        Scalar::Util::blessed($_) && $_->isa('HTML::Element')
             ? $_->as_HTML("", undef, { })
             : $_
     } @_;
@@ -158,12 +177,41 @@ parsed on demand into a tree by the C<HTML::TreeBuilder::XPath>
 module, and provides views into the document tree via an enhanced
 version of that class's C<findnodes> method.
 
-Objects of this class are not meant to be instantiated directly by
-client code, so the class's constructor is not documented here.
+=head1 CONSTRUCTOR
+
+=over 4
+
+=item RSS::Tree::HtmlDocument->new($uri, $content)
+
+Creates a new C<RSS::Tree::HtmlDocument> object which wraps the
+content C<$content>.  If C<$content> is an unblessed code reference,
+it will be called to generate the actual content the first time it is
+needed.
+
+The wrapped content will be converted into a string, if it is not a
+string to begin with.
+
+C<$uri> is the URI associated with this object.  It may be C<undef>,
+but otherwise it must be an absolute URI, or an exception will be
+thrown.
 
 =head1 METHODS
 
 =over 4
+
+=item $doc->uri
+
+Returns the URI with which this object was initialized, as an instance
+of the class C<URI>, or C<undef> if this object has no URI.
+
+=item $doc->absolute_uri($uri)
+
+Returns a new absolute URI for C<$uri>.  If C<$uri> is already an
+absolute URI, a new C<URI> object initialized from it is returned.
+Otherwise, this object's URI is used as a base to convert C<$uri> into
+an absolute URI--again, as a new C<URI> object.  An exception is
+thrown if this cannot be done because this object was not initialized
+with its own URI.
 
 =item $doc->guts
 
@@ -219,12 +267,6 @@ Removes all elements matching C<$xpath> and C<@classes>, using the
 same element-finding functionality as the C<find> method, above, as
 well as the following sibling elements of each.  Returns C<$doc>.
 
-=item $doc->open($uri)
-
-Returns a new C<RSS::Tree::HtmlDocument::Web> object that refers to
-the given URI.  If C<$uri> is a relative URI, it is taken to be
-relative to the URI of this document.
-
 =back
 
 This class provides convenient stringification logic.  Until one of
@@ -254,7 +296,3 @@ Then the following code:
 
 ...will print "<div><span id='two'>Two</span></div>" (possibly modulo
 whitespace).
-
-=head1 SEE ALSO
-
-L<RSS::Tree::HtmlDocument::Web>

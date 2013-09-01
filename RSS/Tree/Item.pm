@@ -17,6 +17,7 @@ package RSS::Tree::Item;
 # You should have received a copy of the GNU General Public License
 # along with RSS::Tree.  If not, see <http://www.gnu.org/licenses/>.
 
+use RSS::Tree::HtmlDocument;
 use strict;
 
 
@@ -98,16 +99,19 @@ sub uri {
 
 sub description {
     my $self = shift;
-    return exists $self->{description}
-        ? $self->{description}
-        : ($self->{description} = $self->_static($self->{item}{description}));
+    $self->{description} = $self->_new_page("$self->{item}{description}")
+        if !exists $self->{description};
+    return $self->{description};
 }
 
 sub page {
     my $self = shift;
-    return exists $self->{page}
-        ? $self->{page}
-        : ($self->{page} = $self->_web($self->_uri));
+    $self->{page} = do {
+        my $parent = $self->{parent};
+        my $uri    = $self->_uri;
+        $self->_new_page(sub { $parent->_download_item($uri) }, $uri);
+    } if !exists $self->{page};
+    return $self->{page};
 }
 
 sub content {
@@ -116,26 +120,16 @@ sub content {
         my $content = $self->{item}{content};
         $content = $content->{encoded}
             if ref $content eq 'HASH' && exists $content->{encoded};
-        $self->{content} = defined $content ? $self->_static($content) : undef;
+        defined $content ? $self->_new_page("$content") : undef;
     };
     return $self->{content};
 }
 
-sub _static {
-    my ($self, $content) = @_;
-    require RSS::Tree::HtmlDocument;
-    return RSS::Tree::HtmlDocument->new(
-        $self->uri, $self->{parent}, $content
-    );
+sub _new_page {
+    my ($self, $content, $uri) = @_;
+    return RSS::Tree::HtmlDocument->new($uri || $self->uri, $content);
 }
 
-sub _web {
-    my ($self, $url) = @_;
-    require RSS::Tree::HtmlDocument::Web;
-    return RSS::Tree::HtmlDocument::Web->new(
-        $self->uri($url), $self->{parent}
-    );
-}
 
 1;
 
@@ -234,7 +228,7 @@ respectively.
 
 =item $item->page
 
-Returns a C<RSS::Tree::HtmlDocument::Web> object which wraps the HTML
-page linked to by this item.
+Returns a C<RSS::Tree::HtmlDocument> object which wraps the HTML page
+linked to by this item.
 
 =back

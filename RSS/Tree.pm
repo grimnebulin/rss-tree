@@ -131,6 +131,9 @@ sub run {
         defined $title ? $title : $name;
 
     # return $rss->as_string;
+    # The as_string method sometimes returns an <?xml?> document with an
+    # empty encoding attribute, which breaks some readers.
+    # This is a hack to work around that.
     my $out = $rss->as_string;
     $out =~ s/^(.+encoding=)(['"])\2/$1$2UTF-8$2/;
     return $out;

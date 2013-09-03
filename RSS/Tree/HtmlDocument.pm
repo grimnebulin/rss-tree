@@ -44,7 +44,8 @@ sub new {
 }
 
 sub uri {
-    return shift->{uri};
+    my $uri = shift->{uri};
+    return $uri && $uri->clone;
 }
 
 sub absolute_uri {
@@ -201,8 +202,9 @@ thrown.
 
 =item $doc->uri
 
-Returns the URI with which this object was initialized, as an instance
-of the class C<URI>, or C<undef> if this object has no URI.
+Returns a copy of the URI with which this object was initialized (as
+an instance of the class C<URI>), or C<undef> if this object has no
+URI.
 
 =item $doc->absolute_uri($uri)
 

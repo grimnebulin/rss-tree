@@ -21,12 +21,14 @@ sub init {
 
 #
 #  Oh, and also, I don't want to see items with titles that include
-#  the string "Mini Clip Show":
+#  the string "Mini Clip Show", or that include categories like
+#  "autocorrect", "autocowreck", etc.  Those are kind of lame.
 #
 
 sub test {
     my ($self, $item) = @_;
-    return $item->title !~ /Mini Clip Show/;
+    return $item->title !~ /Mini Clip Show/
+        && 0 == grep { /\bautoco/i } $item->categories;
 }
 
 

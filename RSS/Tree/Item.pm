@@ -125,6 +125,13 @@ sub content {
     return $self->{content};
 }
 
+sub cache {
+    my $self = shift;
+    return $self->{cache} ||=
+        $self->{parent}{cache}->_item_cache($self)
+            || die "Item cacheing is not available\n";
+}
+
 sub _new_page {
     my ($self, $content, $uri) = @_;
     return RSS::Tree::HtmlDocument->new($uri || $self->uri, $content);
@@ -230,5 +237,20 @@ respectively.
 
 Returns a C<RSS::Tree::HtmlDocument> object which wraps the HTML page
 linked to by this item.
+
+=item $item->cache
+
+Returns a reference to a hash which is tied to this item's cache store
+in its originating tree.  That cache store is used to save the
+rendered version of this item's content; the hash returned by this
+method hooks into a separate store for arbitrary user-defined data.
+
+If item cacheing is not enabled (that is, if the C<RSS::Tree> object
+that generated this item does not have appropriately-set C<cache_dir>
+and C<item_cache_seconds> parameters), an exception is raised.
+
+The hash returned by this method is tied an implementation that
+supports only the C<STORE> and C<FETCH> operations.  An exception will
+be raised if any other hash operation is attempted.
 
 =back

@@ -101,33 +101,30 @@ sub cache_item {
     );
 }
 
-sub _cache {
-    my ($self, $generate, $duration, @keys) = @_;
+sub _do {
+    my $self     = shift;
+    my $duration = shift;
+    my $sub      = pop;
+    my @keys     = @_;
 
-    return $generate->() if !defined $duration
-                         || !defined(my $dbm = $self->_dbm)
-                         || grep { !defined } @keys;
+    my $dbm = $self->_dbm;
+    my $error;
 
     _lock_dbm($dbm);
 
-    my $error;
-
-    my $content = Try::Tiny::try {
+    my $result = Try::Tiny::try {
         my $hash = $dbm;
         $hash = $hash->{$_} ||= { } for @keys;
         my $timestamp = $hash->{timestamp};
-        my $now       = time();
-        my $content;
+        my $now = time();
+        my $reset;
 
         if (!defined $timestamp || $now - $timestamp >= $duration) {
-            $content           = $generate->();
-            $hash->{content}   = Encode::encode_utf8(defined $content ? $content : "");
-            $hash->{timestamp} = $now;
-        } else {
-            $content = Encode::decode_utf8($hash->{content});
+            %$hash = (timestamp => $now);
+            $reset = 1;
         }
 
-        $content;
+        $sub->($hash, $reset);
 
     } Try::Tiny::catch {
         $error = $_;
@@ -137,7 +134,32 @@ sub _cache {
 
     die $error if $error;
 
-    return $content;
+    return $result;
+
+}
+
+sub _cache {
+    my ($self, $generate, $duration, @keys) = @_;
+
+    return $generate->() if !defined $duration
+                         || !defined($self->_dbm)
+                         || grep { !defined } @keys;
+
+    return $self->_do(
+        $duration,
+        @keys,
+        sub {
+            my ($hash, $reset) = @_;
+            my $content;
+            if ($reset || !defined $hash->{content}) {
+                $content = $generate->();
+                $hash->{content} = Encode::encode_utf8(defined $content ? $content : "");
+            } else {
+                $content = Encode::decode_utf8($hash->{content});
+            }
+            $content;
+        }
+    );
 
 }
 
@@ -156,6 +178,50 @@ sub _textify {
     my @content = $node->render($item);
     @content or @content = $node->render_default($item);
     return RSS::Tree::HtmlDocument::_render(@content);
+}
+
+sub _item_cache {
+    my ($self, $item) = @_;
+    defined $self->{dir} && defined $self->{item_seconds} or return;
+    tie my %hash, 'RSS::Tree::Cache::_Item', $self, $item;
+    return \%hash;
+}
+
+
+{
+
+package RSS::Tree::Cache::_Item;
+
+sub TIEHASH {
+    my ($class, $parent, $item) = @_;
+    bless { parent => $parent, item => $item }, $class;
+}
+
+sub STORE {
+    my ($self, $key, $value) = @_;
+    my $escaped = Encode::encode_utf8($value) if defined $value;
+    return $self->_do(sub { $_[0]{data}{$key} = $escaped; $value });
+}
+
+sub FETCH {
+    my ($self, $key) = @_;
+    return $self->_do(sub {
+        my $value = $_[0]{data}{$key};
+        $value = Encode::decode_utf8($value) if defined $value;
+        $value;
+    });
+}
+
+sub _do {
+    my ($self, $sub) = @_;
+    return $self->{parent}->_do(
+        $self->{parent}{item_seconds},
+        'items',
+        $self->{item}->link || $self->{item}->guid,
+        $sub
+    );
+}
+
 }
 
 

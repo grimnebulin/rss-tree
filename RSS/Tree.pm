@@ -102,7 +102,8 @@ sub FEED_CACHE_SECONDS {
 
 sub run {
     my ($self, $name) = @_;
-    my $rss   = XML::RSS->new->parse($self->{cache}->cache_feed);
+    my $cache = $self->{cache};
+    my $rss   = XML::RSS->new->parse($cache->cache_feed);
     my $items = $rss->{items};
     my $limit = $self->{limit};
     my $index = 0;
@@ -119,7 +120,7 @@ sub run {
         my $node    = $self->handles($wrapper, $name);
         if ($node && $node->name eq $name) {
             $self->_postprocess_item($wrapper);
-            _set_content($item, $self->{cache}->cache_item($node, $wrapper));
+            _set_content($item, $cache->cache_item($node, $wrapper));
             ++$index;
             defined $title or $title = $node->title;
         } else {

@@ -144,9 +144,7 @@ sub new_page {
 
 sub find {
     my ($self, $context, $path, @classes) = @_;
-    return $context->findnodes(
-        RSS::Tree::HtmlDocument::_format_path($path, @classes)
-    );
+    return RSS::Tree::HtmlDocument::_find_all($context, $path, @classes)
 }
 
 sub remove {
@@ -394,7 +392,7 @@ functionality of the C<RSS::Tree::HtmlDocument> class.  In short, the
 nodes returned by C<$node-E<gt>find($context, $path, @classes)> are
 removed from the document to which they belong.
 
-=item $node->truncate($context, $path, [, @classes ]);
+=item $node->truncate($context, $path [, @classes ]);
 
 This method is an alternate entry point for the node-truncating
 functionality of the C<RSS::Tree::HtmlDocument> class.  In short, the

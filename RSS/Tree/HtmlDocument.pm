@@ -124,7 +124,19 @@ sub _render {
 
 sub _format_path {
     my ($path, @classes) = @_;
-    return sprintf $path, map _has_class($_), @classes;
+    my $nclasses = @classes;
+    my $error = sub {
+        die qq(Too $_[0] classes ($nclasses) provided to format ),
+            qq(the following XPath expression: $path\n)
+    };
+    my $replace = sub {
+        return '%' if $_[0] eq '%';
+        return _has_class(shift @classes) if @classes;
+        $error->('few');
+    };
+    $path =~ s/ %([%s]) / $replace->($1) /gex;
+    @classes == 0 or $error->('many');
+    return $path;
 }
 
 sub _has_class {
@@ -253,10 +265,9 @@ call:
     //div[contains(concat(" ",normalize-space(@class)," ")," header ")]/
       div[contains(concat(" ",normalize-space(@class)," ")," subheader ")]
 
-This substitution is performed by a simple call to C<sprintf>, so any
-extra arguments are discarded, and any extra C<"%s"> sequences are
-deleted, any literal "%" characters in the pattern must be doubled,
-and no other %-escapes recognized by C<sprintf> should be used.
+Doubled "%" characters in the path are collapsed into a single such
+character.  An error is thrown if the number of provided classes does
+not match the number of C<"%s"> sequences in the path.
 
 =item $doc->remove($xpath [, @classes ])
 
@@ -267,8 +278,9 @@ Returns C<$doc>.
 =item $doc->truncate($xpath [, @classes ])
 
 Removes all elements matching C<$xpath> and C<@classes>, using the
-same element-finding functionality as the C<find> method, above, as
-well as the following sibling elements of each.  Returns C<$doc>.
+same element-finding functionality as the C<find> method, above.  The
+following sibling elements of each matching element are removed as
+well.  Returns C<$doc>.
 
 =back
 

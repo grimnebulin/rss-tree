@@ -240,11 +240,11 @@ inconveniently lengthy XPath test:
 
 To relieve clients of the job of writing this test over and over,
 C<"%s"> character sequences in the XPath expression are expanded into
-instances of this test if additional arguments are supplied to this
-method.  Each additional argument is expanded into the above string,
-where the argument's value replaces C<"desired-class">, and C<"%s">
-sequences in C<$xpath> are replaced with these strings in the order
-that they occur.  For example, the first argument in this call:
+instances of this test.  Each additional argument is expanded into the
+above string, where the argument's value replaces C<"desired-class">,
+and C<"%s"> sequences in C<$xpath> are replaced with these strings in
+the order that they occur.  For example, the first argument in this
+call:
 
     $document->find('//div[%s]/div[%s]', 'header', 'subheader')
 
@@ -255,7 +255,8 @@ that they occur.  For example, the first argument in this call:
 
 This substitution is performed by a simple call to C<sprintf>, so any
 extra arguments are discarded, and any extra C<"%s"> sequences are
-deleted.
+deleted, any literal "%" characters in the pattern must be doubled,
+and no other %-escapes recognized by C<sprintf> should be used.
 
 =item $doc->remove($xpath [, @classes ])
 

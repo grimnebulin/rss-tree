@@ -25,7 +25,8 @@ use strict;
 
 sub new {
     my ($class, $uri, $content) = @_;
-    my $delayed = !Scalar::Util::blessed($content) && ref $content eq 'CODE';
+    my $delayed = !defined Scalar::Util::blessed($content)
+               && ref $content eq 'CODE';
     $content = "$content" if !$delayed;
 
     if (defined $uri) {
@@ -116,7 +117,7 @@ sub _render_tree {
 
 sub _render {
     return join "", map {
-        Scalar::Util::blessed($_) && $_->isa('HTML::Element')
+        defined Scalar::Util::blessed($_) && $_->isa('HTML::Element')
             ? $_->as_HTML("", undef, { })
             : $_
     } @_;

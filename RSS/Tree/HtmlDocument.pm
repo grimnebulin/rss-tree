@@ -124,26 +124,44 @@ sub _render {
 }
 
 sub _format_path {
-    my ($path, @classes) = @_;
+    my $path     = shift;
+    my @classes  = map { /[^\x09\x0a\x0d\x20]+/g } @_;
     my $nclasses = @classes;
+
     my $error = sub {
         die qq(Too $_[0] classes ($nclasses) provided to format ),
             qq(the following XPath expression: $path\n)
     };
+
     my $replace = sub {
         return '%' if $_[0] eq '%';
         return _has_class(shift @classes) if @classes;
         $error->('few');
     };
+
     $path =~ s/ %([%s]) / $replace->($1) /gex;
+
     @classes == 0 or $error->('many');
+
     return $path;
+
 }
 
 sub _has_class {
     my $class = shift;
-    return sprintf 'contains(concat(" ",normalize-space(@class)," ")," %s ")',
-                   $class;
+    return sprintf 'contains(concat(" ",normalize-space(@class)," "),%s)',
+                   _xpath_string(" $class ");
+}
+
+sub _xpath_string {
+    my $str = shift;
+    return qq("$str") if $str !~ /"/;
+    return qq('$str') if $str !~ /'/;
+    return sprintf 'concat(%s)',
+                   join ',',
+                   map /"/ ? qq('$_') : qq("$_"),
+                   grep length > 0,
+                   split /("+)/, $str;
 }
 
 sub _remove {
@@ -253,13 +271,18 @@ inconveniently lengthy XPath test:
 
 To relieve clients of the job of writing this test over and over,
 C<"%s"> character sequences in the XPath expression are expanded into
-instances of this test.  Each additional argument is expanded into the
-above string, where the argument's value replaces C<"desired-class">,
-and C<"%s"> sequences in C<$xpath> are replaced with these strings in
-the order that they occur.  For example, the first argument in this
-call:
+instances of this test.  C<@classes> is expanded into a list of names
+by taking all contiguous sequences of non-whitespace characters in
+order, and then each name is expanded into the above string, where the
+name replaces C<"desired-class">, and C<"%s"> sequences in C<$xpath>
+are replaced with these strings in the order that they occur.  For
+example, the first argument in this call:
 
     $document->find('//div[%s]/div[%s]', 'header', 'subheader')
+
+...or equivalently:
+
+    $doc->find('//div[%s]/div[%s]', 'header subheader')
 
 ...is expanded into the following XPath expression:
 
@@ -269,6 +292,13 @@ call:
 Doubled "%" characters in the path are collapsed into a single such
 character.  An error is thrown if the number of provided classes does
 not match the number of C<"%s"> sequences in the path.
+
+The "whitespace" on which the supplied classes are split is of the
+XML/XPath variety, that is, characters with ordinal value 0x09, 0x0a,
+0x0d, or 0x20.  The generated XPath string literal containing the
+class name is replaced with an equivalent expression if the name
+contains any quotation marks, even though one would be extremely
+unlikely to need such a thing.
 
 =item $doc->remove($xpath [, @classes ])
 

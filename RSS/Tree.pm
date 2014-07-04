@@ -44,7 +44,13 @@ sub new {
 
     my $self = $class->SUPER::new($param->('name', 'title'));
 
-    $self->{$_} = $param->($_) for qw(feed limit agent_id keep_enclosure keep_guid);
+    $self->{$_} = $param->($_) for qw(feed limit keep_enclosure keep_guid);
+
+    if (exists $param{agent}) {
+        $self->{agent} = $param{agent};
+    } else {
+        $self->{agent_id} = $param->('agent_id');
+    }
 
     $self->{cache} = RSS::Tree::Cache->new(
         $self, $param->('cache_dir', 'feed_cache_seconds', 'item_cache_seconds')

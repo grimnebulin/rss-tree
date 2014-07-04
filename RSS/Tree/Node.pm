@@ -138,7 +138,6 @@ sub new_element {
 
 sub new_page {
     my ($self, $uri, $content) = @_;
-    require RSS::Tree::HtmlDocument;
     return RSS::Tree::HtmlDocument->new($uri, $content);
 }
 

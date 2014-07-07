@@ -124,33 +124,48 @@ sub _render {
 }
 
 sub _format_path {
-    my $path     = shift;
-    my @classes  = map { /[^\x09\x0a\x0d\x20]+/g } @_;
-    my $nclasses = @classes;
+    my $path = shift;
+    my $nwords = my @words = map { /[^\x09\x0a\x0d\x20]+/g } @_;
 
     my $error = sub {
-        die qq(Too $_[0] classes ($nclasses) provided to format ),
-            qq(the following XPath expression: $path\n)
+        die "$_[0] the following XPath expression: $path\n";
+    };
+    
+    my $miscount = sub {
+        $error->(qq(Too $_[0] words ($nwords) provided to format));
     };
 
-    my $replace = sub {
-        return '%' if $_[0] eq '%';
-        return _has_class(shift @classes) if @classes;
-        $error->('few');
+    my $nextword = sub {
+        @words ? shift @words : $miscount->('few');
     };
 
-    $path =~ s/ %([%s]) / $replace->($1) /gex;
+    $path =~ s{
+        % (?:
+            (%) | 
+            (s) |
+            \( ( [^)]* ) ( \) (s)? )?
+        )
+    }{
+        $1  ? '%' :
+        $2  ? _has_word('class', $nextword->()) :
+        !$4 ? $error->('Unterminated parentheses in') :
+        !$5 ? $error->('Missing "s" specifier following parentheses in') :
+        _has_word($3, $nextword->())
+    }gex;
 
-    @classes == 0 or $error->('many');
+    @words == 0 or $miscount->('many');
 
     return $path;
 
 }
 
-sub _has_class {
-    my $class = shift;
-    return sprintf 'contains(concat(" ",normalize-space(@class)," "),%s)',
-                   _xpath_string(" $class ");
+sub _has_word {
+    my ($name, $word) = @_;
+    my $attr = $name =~ /^[-_a-zA-Z]+\z/ 
+        ? "\@$name"
+        : sprintf '@*[name()=%s]', _xpath_string($name);
+    return sprintf 'contains(concat(" ",normalize-space(%s)," "),%s)',
+                   $attr, _xpath_string(" $word ");
 }
 
 sub _xpath_string {
@@ -254,7 +269,7 @@ has not already been so parsed, and returns the result of calling the
 C<guts> method on that tree.  See that class for more details,
 particularly the difference between scalar and list context.
 
-=item $doc->find($xpath [, @classes ])
+=item $doc->find($xpath [, @words ])
 
 This method causes the enclosed HTML fragment to be parsed into a tree
 of nodes by the C<HTML::TreeBuilder::XPath> class, if it has not
@@ -263,20 +278,29 @@ C<findnodes> method of the tree's root node; see that class's
 documentation for details.  The scalar or list context of the call to
 this method is propagated to the root node's C<findnodes> method.
 
-In dealing with HTML, one often wants to select nodes whose C<class>
-attribute contains a given word.  Doing this properly requires an
-inconveniently lengthy XPath test:
+In dealing with HTML, one often wants to select elements with an
+attribute (typically "class") which contains a given word.  Doing this
+properly requires an inconveniently lengthy XPath test:
 
-    contains(concat(" ",normalize-space(@class)," ")," desired-class ")
+    contains(concat(" ",normalize-space(@attribute)," ")," my-word ")
 
 To relieve clients of the job of writing this test over and over,
-C<"%s"> character sequences in the XPath expression are expanded into
-instances of this test.  C<@classes> is expanded into a list of names
-by taking all contiguous sequences of non-whitespace characters in
-order, and then each name is expanded into the above string, where the
-name replaces C<"desired-class">, and C<"%s"> sequences in C<$xpath>
-are replaced with these strings in the order that they occur.  For
-example, the first argument in this call:
+C<"%(attribute)s"> sequences in the XPath expression are expanded into
+tests of this form, where the text between the parentheses replaces
+the word "attribute" above.  Each time such a sequence occurs, it
+consumes another word from the words in C<@words>, and that word
+replaces the string "my-word" above.
+
+The words which are consumed by this substitution are not necessarily
+the elements of C<@words> directly, but rather the list of contiguous
+sequences of non-whitespace characters from the elements of C<@words>,
+in order.
+
+Since it is especially common to want to examine the HTML "class"
+attribute, the sequence C<"%(class)s"> can be shortened to simply
+C<"%s">.
+
+For example, the first argument in this call:
 
     $document->find('//div[%s]/div[%s]', 'header', 'subheader')
 
@@ -290,8 +314,9 @@ example, the first argument in this call:
       div[contains(concat(" ",normalize-space(@class)," ")," subheader ")]
 
 Doubled "%" characters in the path are collapsed into a single such
-character.  An error is thrown if the number of provided classes does
-not match the number of C<"%s"> sequences in the path.
+character.  "%" characters not preceding a "s" or "(" character need
+not be doubled.  An error is thrown if the number of provided words
+does not match the number of C<"%(...)s"> sequences in the path.
 
 The "whitespace" on which the supplied classes are split is of the
 XML/XPath variety, that is, characters with ordinal value 0x09, 0x0a,

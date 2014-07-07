@@ -166,6 +166,23 @@ sub wrap {
     return $wrapper;
 }
 
+sub clean_element {
+    my ($self, $elem) = @_;
+
+    if ($elem->tag eq 'script') {
+        $elem->detach;
+    } else {
+        $elem->attr($_, undef) for grep m{
+            ^ (?: data- | item | on | (?: id | class ) \z )
+        }x, $elem->all_attr_names;
+
+        $self->clean_element($_) for grep ref, $elem->content_list;
+    }
+
+    return $self;
+
+}
+
 sub _children {
     return @{ shift->{children} };
 }
@@ -342,7 +359,7 @@ be inherited by the entire tree.
 This method provides a sensible default way to render RSS items.  It
 returns the item's content (that is, C<$item-E<gt>content>) if is has
 any, otherwise it returns the item's description (that is,
-C<$item-E<gt>description).
+C<$item-E<gt>description>).
 
 =item $node->uri_for($item)
 
@@ -353,7 +370,7 @@ override this method to return the correct URI.
 
 =back
 
-=head1 CONVENIENCE METHODS
+=head1 UTILITY METHODS
 
 =over 4
 
@@ -410,5 +427,54 @@ empty C<HTML::Element> object with C<$wrapper> as its tag name.  That
 allows one to write, for example:
 
     my $div = $node->wrap($element, 'div');
+
+=item $node->clean_element($element)
+
+This method "cleans" the C<HTML::Element> object C<$element> by
+removing from the HTML tree rooted at it certain "elements" (broadly
+speaking) which are unlikely to be meaningful outside of the element's
+original context.  Specifically:
+
+=over 4
+
+=item *
+
+All C<E<lt>scriptE<gt>> elements in the tree are detached from their
+parents.
+
+=item *
+
+Certain attributes are removed from all other elements in the tree:
+
+=over 4
+
+=item *
+
+id
+
+=item *
+
+class
+
+=item *
+
+All custom data attributes; that is, those attributes whose names
+start with "data-".
+
+=item *
+
+All attributes whose names start with "item", such as those in the
+HTML5 microdata specification ("itemscope", "itemtype", etc).
+
+=item *
+
+All attributes whose names start with "on", such as those which define
+event handlers ("onclick", "onmouseover", etc).
+
+=back
+
+=back
+
+Returns C<$node>.
 
 =back

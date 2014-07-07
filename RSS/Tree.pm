@@ -20,6 +20,7 @@ package RSS::Tree;
 use Errno;
 use LWP::UserAgent;
 use RSS::Tree::Cache;
+use RSS::Tree::HtmlDocument;
 use RSS::Tree::Item;
 use XML::RSS;
 
@@ -44,7 +45,9 @@ sub new {
 
     my $self = $class->SUPER::new($param->('name', 'title'));
 
-    $self->{$_} = $param->($_) for qw(feed limit keep_enclosure keep_guid);
+    $self->{$_} = $param->($_) for qw(
+        feed limit keep_enclosure keep_guid autoclean
+    );
 
     if (exists $param{agent}) {
         $self->{agent} = $param{agent};
@@ -94,6 +97,10 @@ sub KEEP_GUID {
     return 0;
 }
 
+sub AUTOCLEAN {
+    return 1;
+}
+
 sub CACHE_DIR {
     return $ENV{RSS_TREE_CACHE_DIR};
 }
@@ -126,7 +133,11 @@ sub run {
         my $node    = $self->handles($wrapper, $name);
         if ($node && defined $node->name && $node->name eq $name) {
             $self->_postprocess_item($wrapper);
-            _set_content($item, $cache->cache_item($node, $wrapper));
+            _set_content(
+                $item, $cache->cache_item(
+                    $wrapper, sub { $self->_render($node, @_) }
+                ),
+            );
             ++$index;
             defined $title or $title = $node->title;
         } else {
@@ -145,6 +156,23 @@ sub run {
     $out =~ s/^(.+encoding=)(['"])\2/$1$2UTF-8$2/;
     return $out;
 
+}
+
+sub _render {
+    my ($self, $node, $item) = @_;
+    my @content = $node->render($item);
+    @content > 0 or @content = $node->render_default($item);
+    @content = $self->_clean_output(@content) if $self->{autoclean};
+    return RSS::Tree::HtmlDocument::_render(@content);
+}
+
+sub _clean_output {
+    my $self = shift;
+    return grep {
+        !RSS::Tree::HtmlDocument::_is_html_element($_) || (
+            $self->clean_element($_), $_->tag ne 'script'
+        )
+    } @_;
 }
 
 sub _postprocess_item {
@@ -359,6 +387,21 @@ its "enclosure" field.  Defaults to true.
 If false, each RSS item processed by the object will be stripped of
 its "guid" field.  Defaults to false.
 
+=item autoclean
+
+If true, then all C<HTML::Element> objects returned by the C<render>
+method of all nodes in this tree will be cleaned by calling the
+C<RSS::Tree::Node> method C<clean_element> on them prior to
+stringifying the objects into the destination RSS feed.  Defaults to
+true.
+
+In addition, C<E<lt>scriptE<gt>> elements returned by the C<render>
+method of all nodes in this tree are omitted entirely from the
+stringified RSS output.
+
+See the C<RSS::Tree::Node> class for details on the C<clean_element>
+method.
+
 =back
 
 It is convenient not to have to write a constructor for every subclass
@@ -378,6 +421,7 @@ uppercased.  Explicitly:
 =item AGENT_ID
 =item KEEP_ENCLOSURE
 =item KEEP_GUID
+=item AUTOCLEAN
 
 =back
 

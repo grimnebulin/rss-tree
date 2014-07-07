@@ -21,7 +21,6 @@ use Encode ();
 use Errno;
 use Scalar::Util;
 use Try::Tiny ();
-use RSS::Tree::HtmlDocument;
 use strict;
 
 
@@ -93,9 +92,9 @@ sub cache_feed {
 }
 
 sub cache_item {
-    my ($self, $node, $item) = @_;
+    my ($self, $item, $render) = @_;
     return $self->_cache(
-        sub { _textify($node, $item) },
+        sub { $render->($item) },
         $self->{item_seconds},
         'items', $item->link || $item->guid
     );
@@ -171,13 +170,6 @@ sub _lock_dbm {
     } else {
         $dbm->lock(DBM::Deep::LOCK_EX());
     }
-}
-
-sub _textify {
-    my ($node, $item) = @_;
-    my @content = $node->render($item);
-    @content or @content = $node->render_default($item);
-    return RSS::Tree::HtmlDocument::_render(@content);
 }
 
 sub _item_cache {

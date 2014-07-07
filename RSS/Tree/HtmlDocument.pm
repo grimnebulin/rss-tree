@@ -117,10 +117,16 @@ sub _render_tree {
 
 sub _render {
     return join "", map {
-        defined Scalar::Util::blessed($_) && $_->isa('HTML::Element')
+        _is_html_element($_)
             ? $_->as_HTML("", undef, { })
             : $_
     } @_;
+}
+
+sub _is_html_element {
+    my $obj = shift;
+    return defined Scalar::Util::blessed($obj)
+        && $obj->isa('HTML::Element');
 }
 
 sub _format_path {
@@ -161,7 +167,7 @@ sub _format_path {
 
 sub _has_word {
     my ($name, $word) = @_;
-    my $attr = $name =~ /^[-_a-zA-Z]+\z/ 
+    my $attr = $name =~ /^[-_a-zA-Z]+\z/
         ? "\@$name"
         : sprintf '@*[name()=%s]', _xpath_string($name);
     return sprintf 'contains(concat(" ",normalize-space(%s)," "),%s)',

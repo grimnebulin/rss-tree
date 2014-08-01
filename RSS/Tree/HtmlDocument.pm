@@ -136,7 +136,7 @@ sub _format_path {
     my $error = sub {
         die "$_[0] the following XPath expression: $path\n";
     };
-    
+
     my $miscount = sub {
         $error->(qq(Too $_[0] words ($nwords) provided to format));
     };
@@ -147,7 +147,7 @@ sub _format_path {
 
     $path =~ s{
         % (?:
-            (%) | 
+            (%) |
             (s) |
             \( ( [^)]* ) ( \) (s)? )?
         )

@@ -84,17 +84,20 @@ sub match_creator {
 
 sub match_category {
     my ($self, $regex) = @_;
-    $self->{test} =
-        eval 'sub { 0 < grep { _trim($_) =~ /$regex/oi } $_[0]->categories }';
+    my $test = eval q{
+        sub { 0 < grep { _trim($_) =~ /$regex/oi } $_[0]->categories }
+    };
     die $@ if $@;
+    $self->{test} = $test;
     return $self;
 }
 
 sub _match {
     my ($self, $field, $regex) = @_;
     $field =~ /^[^\W\d]\w*\z/ or die qq(Invalid field "$field"\n);
-    $self->{test} = eval "sub { _trim(\$_[0]->$field) =~ /\$regex/oi }";
+    my $test = eval "sub { _trim(\$_[0]->$field) =~ /\$regex/oi }";
     die $@ if $@;
+    $self->{test} = $test;
     return $self;
 }
 

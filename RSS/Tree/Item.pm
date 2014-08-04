@@ -91,10 +91,25 @@ sub _uri {
     return $self->{parent}->uri_for($self);
 }
 
-sub uri {
+sub _ultimate_uri {
     my $self = shift;
+    return $self->{ultimate_uri} ||= $self->_get_ultimate_uri;
+}
+
+sub _get_ultimate_uri {
+    my $self = shift;
+    return $self->{parent}->agent->head($self->_uri)->base->as_string;
+}
+
+sub uri {
+    my ($self, $other_uri, $follow) = @_;
     require URI;
-    return @_ ? URI->new_abs($_[0], $self->_uri) : URI->new($self->_uri);
+    if (defined $other_uri) {
+        my $base = $follow ? $self->_ultimate_uri : $self->_uri;
+        return URI->new_abs($other_uri, $base);
+    } else {
+        return URI->new($self->_uri);
+    }
 }
 
 sub description {
@@ -216,15 +231,21 @@ deleted from the item.
 
 =over 4
 
-=item $item->uri([ $relative_uri ])
+=item $item->uri([ $other_uri [, $follow ] ])
 
-Without an argument, returns a C<URI> object for the page linked to by
-this item.  The link may not be the same as this object's C<link>
-field if this object's parent C<RSS::Tree> object has overloaded its
-C<uri_for> method.
+If C<$other_uri> is undefined, returns a C<URI> object for the page
+linked to by this item.  The link may not be the same as this object's
+C<link> field if this object's parent C<RSS::Tree> object has
+overloaded its C<uri_for> method.
 
-With an argument, returns a C<URI> object formed by using the provided
-C<$relative_url>, relative to this item's URI.
+Otherwise, returns a new absolute C<URI> object formed by taking the
+provided C<$other_uri>, relative to a base URI.  If C<$follow> is
+false, then that base URI is this item's URI.  Otherwise, the base URI
+is obtained by issuing a HEAD request for this item's URI and using
+the URI of the final request, after any redirections have occurred.
+This base URI is cached so that further calls to this method with a
+true C<$follow> parameter do not result in repeated HEAD requests
+being issued.
 
 =item $item->description
 =item $item->content

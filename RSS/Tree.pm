@@ -32,6 +32,13 @@ my $DEFAULT_ITEM_CACHE_SECONDS = 60 * 60 * 24;
 
 my $DEFAULT_FEED_CACHE_SECONDS = 60 * 5;
 
+my %AUTORESOLVE = (
+    img    => [ 'src'  ],
+    iframe => [ 'src'  ],
+    embed  => [ 'src'  ],
+    a      => [ 'href' ],
+);
+
 
 sub new {
     my ($class, %param) = @_;
@@ -46,7 +53,7 @@ sub new {
     my $self = $class->SUPER::new($param->('name', 'title'));
 
     $self->{$_} = $param->($_) for qw(
-        feed limit keep_enclosure keep_guid autoclean
+        feed limit keep_enclosure keep_guid autoclean autoresolve
     );
 
     if (exists $param{agent}) {
@@ -98,6 +105,10 @@ sub KEEP_GUID {
 }
 
 sub AUTOCLEAN {
+    return 1;
+}
+
+sub AUTORESOLVE {
     return 1;
 }
 
@@ -162,7 +173,10 @@ sub _render {
     my ($self, $node, $item) = @_;
     my @content = $node->render($item);
     @content > 0 or @content = $node->render_default($item);
-    @content = $self->_clean_output(@content) if $self->{autoclean};
+    @content = $self->_clean_output(@content)
+        if $self->{autoclean};
+    @content = $self->_resolve_output($item, @content)
+        if $self->{autoresolve};
     return RSS::Tree::HtmlDocument::_render(@content);
 }
 
@@ -173,6 +187,34 @@ sub _clean_output {
             $self->clean_element($_), $_->tag ne 'script'
         )
     } @_;
+}
+
+sub _resolve_output {
+    my ($self, $item, @elems) = @_;
+    my $follow = $self->{autoresolve} eq 'follow';
+    for my $elem (@elems) {
+        $elem = $self->_resolve_element($item, $elem->clone, $follow)
+            if RSS::Tree::HtmlDocument::_is_html_element($elem);
+    }
+    return @elems;
+}
+
+sub _resolve_element {
+    my ($self, $item, $elem, $follow) = @_;
+
+    if (my $attrs = $AUTORESOLVE{ $elem->tag }) {
+        for my $attr (@$attrs) {
+            if (defined(my $value = $elem->attr($attr))) {
+                $elem->attr($attr, $item->uri($value, $follow));
+            }
+        }
+    }
+
+    $self->_resolve_element($item, $_, $follow)
+        for grep ref, $elem->content_list;
+
+    return $elem;
+
 }
 
 sub _postprocess_item {
@@ -389,11 +431,11 @@ its "guid" field.  Defaults to false.
 
 =item autoclean
 
-If true, then all C<HTML::Element> objects returned by the C<render>
-method of all nodes in this tree will be cleaned by calling the
-C<RSS::Tree::Node> method C<clean_element> on them prior to
-stringifying the objects into the destination RSS feed.  Defaults to
-true.
+A boolean flag.  If true, then all C<HTML::Element> objects returned
+by the C<render> method of all nodes in this tree will be cleaned by
+calling the C<RSS::Tree::Node> method C<clean_element> on them prior
+to stringifying the objects into the destination RSS feed.  Defaults
+to true.
 
 In addition, C<E<lt>scriptE<gt>> elements returned by the C<render>
 method of all nodes in this tree are omitted entirely from the
@@ -401,6 +443,39 @@ stringified RSS output.
 
 See the C<RSS::Tree::Node> class for details on the C<clean_element>
 method.
+
+=item autoresolve
+
+If this parameter is true, then all C<HTML::Element> objects returned
+by the C<render> method of all nodes in this tree will be
+"autoresolved"; that is, certain attributes of each such element, as
+well as those of all of their descendent elements, will be converted
+from relative URIs to absolute URIs, using the URI of the source RSS
+item as a base.  Attributes which will so converted include:
+
+=over 4
+
+=item *
+
+The C<E<lt>srcE<gt>> attribute of C<E<lt>imgE<gt>>,
+C<E<lt>iframeE<gt>>, and C<E<lt>embedE<gt>> elements.
+
+=item *
+
+The C<E<lt>hrefE<gt>> attribute of C<E<lt>aE<gt>> elements.
+
+=back
+
+If the value of this parameter is equal to the string "follow", then
+the base URI is obtained by issuing an HTTP HEAD request for the
+associated item's URI, and using the base URI of the final request,
+after any redirections have occurred.  This may be necessary if a
+feed's items link to a proxy service.
+
+If both of the C<autoclean> and C<autoresolve> parameters are true,
+then autocleaning happens before autoresolving.
+
+The default value is C<1>.
 
 =back
 
@@ -422,6 +497,7 @@ uppercased.  Explicitly:
 =item KEEP_ENCLOSURE
 =item KEEP_GUID
 =item AUTOCLEAN
+=item AUTORESOLVE
 
 =back
 

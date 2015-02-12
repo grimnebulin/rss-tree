@@ -18,10 +18,12 @@ package RSS::Tree;
 # along with RSS::Tree.  If not, see <http://www.gnu.org/licenses/>.
 
 use Errno;
+use HTTP::Headers;
 use LWP::UserAgent;
 use RSS::Tree::Cache;
 use RSS::Tree::HtmlDocument;
 use RSS::Tree::Item;
+use Scalar::Util;
 use XML::RSS;
 
 use parent qw(RSS::Tree::Node);
@@ -55,6 +57,24 @@ sub new {
     $self->{$_} = $param->($_) for qw(
         feed limit keep_enclosure keep_guid autoclean autoresolve
     );
+
+    my @headers = $param->('extra_http_headers');
+
+    if (@headers == 1) {
+        my $elem = $headers[0];
+        if (!Scalar::Util::blessed($elem)) {
+            my $type = ref $elem;
+            if ($type eq 'HASH') {
+                @headers = %$elem;
+            } elsif ($type eq 'ARRAY') {
+                @headers = @$elem;
+            }
+        }
+    }
+
+    @headers % 2 == 0 or die "Invalid extra_http_headers parameter";
+
+    $self->{extra_http_headers} = \@headers;
 
     if (exists $param{agent}) {
         $self->{agent} = $param{agent};
@@ -122,6 +142,10 @@ sub ITEM_CACHE_SECONDS {
 
 sub FEED_CACHE_SECONDS {
     return $DEFAULT_FEED_CACHE_SECONDS;
+}
+
+sub EXTRA_HTTP_HEADERS {
+    return;
 }
 
 sub run {
@@ -249,8 +273,22 @@ sub write_programs {
 sub agent {
     my $self = shift;
     return $self->{agent} ||= LWP::UserAgent->new(
+        default_headers => $self->_default_headers,
         defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
     );
+}
+
+sub _default_headers {
+    my $self    = shift;
+    my $headers = HTTP::Headers->new;
+    my @extra   = @{ $self->{extra_http_headers} };
+
+    while (@extra) {
+        $headers->header(splice @extra, 0, 2);
+    }
+
+    return $headers;
+
 }
 
 sub decode_response {
@@ -477,6 +515,13 @@ then autocleaning happens before autoresolving.
 
 The default value is C<1>.
 
+=item extra_http_headers
+
+This parameter specifies extra headers for every HTTP request issued
+by this object's user agent.  It can be a reference to either an
+unblessed hash or to an unblessed array of flattened key-value pairs
+(and thus must be of even length).
+
 =back
 
 It is convenient not to have to write a constructor for every subclass
@@ -487,17 +532,30 @@ uppercased.  Explicitly:
 =over 4
 
 =item NAME
+
 =item TITLE
+
 =item FEED
+
 =item LIMIT
+
 =item CACHE_DIR
+
 =item FEED_CACHE_SECONDS
+
 =item ITEM_CACHE_SECONDS
+
 =item AGENT_ID
+
 =item KEEP_ENCLOSURE
+
 =item KEEP_GUID
+
 =item AUTOCLEAN
+
 =item AUTORESOLVE
+
+=item EXTRA_HTTP_HEADERS
 
 =back
 
@@ -509,6 +567,9 @@ Such methods can be easily defined by the C<constant> pragma, e.g.:
 
 A parameter passed to the constructor overrides the parameter value
 returned by these methods.
+
+The C<EXTRA_HTTP_HEADERS> method may return a flat list of key/value
+pairs rather than a reference.
 
 =back
 

@@ -272,10 +272,18 @@ sub write_programs {
 
 sub agent {
     my $self = shift;
-    return $self->{agent} ||= LWP::UserAgent->new(
-        default_headers => $self->_default_headers,
-        defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
-    );
+    return $self->{agent} ||= do {
+        my $agent = LWP::UserAgent->new(
+            default_headers => $self->_default_headers,
+            defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
+        );
+        $self->tweak_agent($agent);
+        $agent;
+    };
+}
+
+sub tweak_agent {
+    # nop
 }
 
 sub _default_headers {

@@ -277,13 +277,11 @@ sub agent {
             default_headers => $self->_default_headers,
             defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
         );
-        $self->tweak_agent($agent);
+        if (my $tweak = $self->can('tweak_agent')) {
+            $self->$tweak($agent);
+        }
         $agent;
     };
-}
-
-sub tweak_agent {
-    # nop
 }
 
 sub _default_headers {

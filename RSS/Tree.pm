@@ -19,7 +19,6 @@ package RSS::Tree;
 
 use Errno;
 use HTTP::Headers;
-use LWP::UserAgent;
 use RSS::Tree::Cache;
 use RSS::Tree::HtmlDocument;
 use RSS::Tree::Item;
@@ -58,28 +57,15 @@ sub new {
         feed limit keep_enclosure keep_guid autoclean autoresolve
     );
 
-    my @headers = $param->('extra_http_headers');
-
-    if (@headers == 1) {
-        my $elem = $headers[0];
-        if (!Scalar::Util::blessed($elem)) {
-            my $type = ref $elem;
-            if ($type eq 'HASH') {
-                @headers = %$elem;
-            } elsif ($type eq 'ARRAY') {
-                @headers = @$elem;
-            }
-        }
-    }
-
-    @headers % 2 == 0 or die "Invalid extra_http_headers parameter";
-
-    $self->{extra_http_headers} = \@headers;
-
     if (exists $param{agent}) {
         $self->{agent} = $param{agent};
     } else {
-        $self->{agent_id} = $param->('agent_id');
+        my $config = $param->('agent_config');
+        my $id     = $param->('agent_id');
+        $self->{agent_config} = {
+            defined $id ? (agent => $id) : (),
+            defined $config ? %$config : (),
+        };
     }
 
     $self->{cache} = RSS::Tree::Cache->new(
@@ -116,6 +102,10 @@ sub AGENT_ID {
     return "";
 }
 
+sub AGENT_CONFIG {
+    return undef;
+}
+
 sub KEEP_ENCLOSURE {
     return 1;
 }
@@ -133,7 +123,7 @@ sub AUTORESOLVE {
 }
 
 sub CACHE_DIR {
-    return $ENV{RSS_TREE_CACHE_DIR};
+    undef;
 }
 
 sub ITEM_CACHE_SECONDS {
@@ -142,10 +132,6 @@ sub ITEM_CACHE_SECONDS {
 
 sub FEED_CACHE_SECONDS {
     return $DEFAULT_FEED_CACHE_SECONDS;
-}
-
-sub EXTRA_HTTP_HEADERS {
-    return;
 }
 
 sub run {
@@ -273,28 +259,9 @@ sub write_programs {
 sub agent {
     my $self = shift;
     return $self->{agent} ||= do {
-        my $agent = LWP::UserAgent->new(
-            default_headers => $self->_default_headers,
-            defined $self->{agent_id} ? (agent => $self->{agent_id}) : (),
-        );
-        if (my $tweak = $self->can('tweak_agent')) {
-            $self->$tweak($agent);
-        }
-        $agent;
+        require LWP::UserAgent;
+        LWP::UserAgent->new(%{ $self->{agent_config} });
     };
-}
-
-sub _default_headers {
-    my $self    = shift;
-    my $headers = HTTP::Headers->new;
-    my @extra   = @{ $self->{extra_http_headers} };
-
-    while (@extra) {
-        $headers->header(splice @extra, 0, 2);
-    }
-
-    return $headers;
-
 }
 
 sub decode_response {
@@ -314,8 +281,12 @@ sub _download_feed {
     defined $self->{feed}
         or die "No RSS feed defined for class ", ref $self, "\n";
     my $response = $self->agent->get($self->{feed});
-    $response->is_success
-        or die "Failed to download RSS feed from $self->{feed}\n";
+    if (!$response->is_success) {
+        my $err = $response->header('Client-Warning') eq 'Internal response'
+               && $response->decoded_content;
+        die "Failed to download RSS feed from $self->{feed}",
+            defined $err ? (': ', $err) : (), "\n";
+    }
     return $response->decoded_content;
 }
 
@@ -436,10 +407,9 @@ repeatedly.
 =item cache_dir
 
 The directory where the cache file for this feed will be stored.  If
-undefined, no cacheing will be performed.  It defaults to the value of
-the C<RSS_TREE_CACHE_DIR> environment variable.
+undefined (the default), no caching will be performed.
 
-Cacheing is handled by the C<DBM::Deep> module, which is C<require>d
+Caching is handled by the C<DBM::Deep> module, which is C<require>d
 when any item is to be cached.  An exception will occur if that module
 is not available.
 
@@ -455,13 +425,38 @@ C<item_cache_seconds>.
 C<feed_cache_seconds> defaults to 300 (five minutes), and
 C<item_cache_seconds> defaults to 86400 (twenty-four hours).
 
+=item agent
+
+This is a user-agent object which will be used to dispatch requests to
+the archive referred to by the new object; it should be an instance of
+the C<LWP::UserAgent> class.
+
+If this parameter is not present, an C<LPW::UserAgent> object will be
+constructed when needed.  This object can be configured by the
+parameters C<agent_config> and C<agent_id>, below.
+
+=item agent_config
+
+If defined, this parameter should be a hash of parameters that will be
+passed to the C<LWP::UserAgent> constructor when an object of that
+type is needed.  It is ignored if the C<agent> parameter is present.
+
+The default value is C<undef>.
+
+If the only parameter to be set is C<agent> (which sets the object's
+user-agent), the C<agent_id> parameter provides a slightly more
+convenient way to set it.
+
 =item agent_id
 
-This is the User-Agent string that will be used by the
-C<LWP::UserAgent> object that performs all web requests related to
-this object.  It defaults to C<""> (the empty string).  If undefined,
-no explicit user-agent will be set, and so the default agent supplied
-by the C<LWP::UserAgent> module will be used.
+This parameter specifies the user-agent that will be passed to the
+C<LWP::UserAgent> constructor when an object of that type is needed.
+It is ignored if the C<agent> parameter is present, or if an C<agent>
+key is present in the C<agent_config> parameter.
+
+The default value is C<""> (the empty string).  If undefined, no
+explicit user-agent will be set, and so the default agent supplied by
+the C<LWP::UserAgent> module will be used.
 
 =item keep_enclosure
 
@@ -521,13 +516,6 @@ then autocleaning happens before autoresolving.
 
 The default value is C<1>.
 
-=item extra_http_headers
-
-This parameter specifies extra headers for every HTTP request issued
-by this object's user agent.  It can be a reference to either an
-unblessed hash or to an unblessed array of flattened key-value pairs
-(and thus must be of even length).
-
 =back
 
 It is convenient not to have to write a constructor for every subclass
@@ -561,8 +549,6 @@ uppercased.  Explicitly:
 
 =item AUTORESOLVE
 
-=item EXTRA_HTTP_HEADERS
-
 =back
 
 Such methods can be easily defined by the C<constant> pragma, e.g.:
@@ -573,9 +559,6 @@ Such methods can be easily defined by the C<constant> pragma, e.g.:
 
 A parameter passed to the constructor overrides the parameter value
 returned by these methods.
-
-The C<EXTRA_HTTP_HEADERS> method may return a flat list of key/value
-pairs rather than a reference.
 
 =back
 

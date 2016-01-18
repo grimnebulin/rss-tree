@@ -1,6 +1,6 @@
 package RSS::Tree::Item;
 
-# Copyright 2013 Sean McAfee
+# Copyright 2013-2016 Sean McAfee
 
 # This file is part of RSS::Tree.
 

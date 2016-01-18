@@ -519,9 +519,9 @@ The default value is C<1>.
 =back
 
 It is convenient not to have to write a constructor for every subclass
-of C<RSS::Tree>, so each of the parameters described above can also be
+of C<RSS::Tree>, so most of the parameters described above can also be
 supplied by a class method with the same name as the parameter, but
-uppercased.  Explicitly:
+uppercased.  Specifically:
 
 =over 4
 
@@ -540,6 +540,8 @@ uppercased.  Explicitly:
 =item ITEM_CACHE_SECONDS
 
 =item AGENT_ID
+
+=item AGENT_CONFIG
 
 =item KEEP_ENCLOSURE
 

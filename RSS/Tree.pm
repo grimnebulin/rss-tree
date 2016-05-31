@@ -158,31 +158,26 @@ sub run {
     my $f = $cache->cache_feed;
     my $infeed  = XML::Feed->parse(\$f);
     my $outfeed = _empty_copy_of($infeed);
-    my @items   = $infeed->items;
     my $limit   = $self->{limit};
-    my $index   = 0;
     my $count   = 0;
     my $title;
 
     defined $name  or $name  = $self->name;
     defined $limit or $limit = 9e99;
 
-    while ($index < @items) {
+    for my $item ($infeed->items) {
         last if ++$count > $limit;
-        my $item    = $items[$index];
         my $wrapper = RSS::Tree::Item->new($self, $item);
         my $node    = $self->handles($wrapper, $name);
-        if ($node && defined $node->name && $node->name eq $name) {
-            $self->_postprocess_item($wrapper);
-            _set_content(
-                $item, $cache->cache_item(
-                    $wrapper, sub { $self->_render($node, @_) }
-                ),
-            );
-            ++$index;
-            defined $title or $title = $node->title;
-            $outfeed->add_entry($item);
-        }
+        next if !($node && defined $node->name && $node->name eq $name);
+        $self->_postprocess_item($wrapper);
+        _set_content(
+            $item, $cache->cache_item(
+                $wrapper, sub { $self->_render($node, @_) }
+            ),
+        );
+        defined $title or $title = $node->title;
+        $outfeed->add_entry($item);
     }
 
     $title = defined $title ? $title : $name;

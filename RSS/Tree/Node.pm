@@ -119,9 +119,7 @@ sub render {
 
 sub render_default {
     my ($self, $item) = @_;
-    return defined $item->content
-        ? $item->content
-        : $item->description;
+    return $item->content;
 }
 
 sub uri_for {

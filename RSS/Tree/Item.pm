@@ -26,64 +26,41 @@ sub new {
     bless { parent => $parent, item => $item }, $class;
 }
 
-sub unwrap {
-    return $_[0]{item};
-}
-
 sub title {
-    return $_[0]{item}{title};
+    return shift->{item}->title;
 }
 
 sub set_title {
-    defined $_[1] ? ($_[0]{item}{title} = $_[1]) : delete $_[0]{item}{title};
-    return $_[0];
+    my ($self, $title) = @_;
+    $self->{item}->title($title);
+    return $self;
 }
 
 sub link {
-    return $_[0]{item}{link};
+    return shift->{item}->link;
 }
 
 sub set_link {
-    defined $_[1] ? ($_[0]{item}{link} = $_[1]) : delete $_[0]{item}{link};
-    return $_[0];
-}
-
-sub guid {
-    return $_[0]{item}{guid};
-}
-
-sub set_guid {
-    defined $_[1] ? ($_[0]{item}{guid} = $_[1]) : delete $_[0]{item}{guid};
-    return $_[0];
+    my ($self, $link) = @_;
+    $self->link($link);
+    return $self;
 }
 
 sub author {
-    return $_[0]{item}{author};
+    return shift->{item}->author;
 }
 
 sub set_author {
-    defined $_[1] ? ($_[0]{item}{author} = $_[1]) : delete $_[0]{item}{author};
-    return $_[0];
+    my ($self, $author) = @_;
+    $self->{item}->author($author);
+    return $self;
 }
 
-sub creator {
-    return $_[0]{item}{dc}{creator};
-}
-
-sub set_creator {
-    defined $_[1] ? ($_[0]{item}{dc}{creator} = $_[1]) : delete $_[0]{item}{dc}{creator};
-    return $_[0];
-}
+*creator = *author;
+*set_creator = *set_author;
 
 sub categories {
-    my $cat = shift->{item}{category};
-    return ref $cat ? @$cat : $cat;
-}
-
-sub set_categories {
-    my ($self, @newval) = @_;
-    $self->{item}{category} = @newval != 1 ? \@newval : $newval[0];
-    return $self;
+    return shift->category;
 }
 
 sub _uri {
@@ -114,7 +91,7 @@ sub uri {
 
 sub description {
     my $self = shift;
-    $self->{description} = $self->_new_page("$self->{item}{description}")
+    $self->{description} = $self->_new_page($self->{item}->content->body)
         if !exists $self->{description};
     return $self->{description};
 }
@@ -129,16 +106,7 @@ sub page {
     return $self->{page};
 }
 
-sub content {
-    my $self = shift;
-    exists $self->{content} or $self->{content} = do {
-        my $content = $self->{item}{content};
-        $content = $content->{encoded}
-            if ref $content eq 'HASH' && exists $content->{encoded};
-        defined $content ? $self->_new_page("$content") : undef;
-    };
-    return $self->{content};
-}
+*content = *description;
 
 sub cache {
     my $self = shift;

@@ -23,7 +23,7 @@ use RSS::Tree::Cache;
 use RSS::Tree::HtmlDocument;
 use RSS::Tree::Item;
 use Scalar::Util;
-use XML::RSS;
+use XML::Feed;
 
 use parent qw(RSS::Tree::Node);
 use strict;
@@ -134,22 +134,42 @@ sub FEED_CACHE_SECONDS {
     return $DEFAULT_FEED_CACHE_SECONDS;
 }
 
+my @FEED_FIELDS = qw(
+    title base link description author language copyright modified
+    generator self_link first_link last_link next_link previous_link
+    current_link next_archive_link prev_archive_link
+);
+
+sub _empty_copy_of {
+    my $feed = shift;
+    my ($format, @version) = split / /, $feed->format;
+    my $copy = XML::Feed->new($format, @version ? (version => $version[0]) : ());
+    for my $field (@FEED_FIELDS) {
+        my $value = $feed->$field;
+        $copy->$field($value) if defined $value;
+    }
+    return $copy;
+}
+
 sub run {
     my ($self, $name) = @_;
-    my $cache = $self->{cache};
-    my $rss   = XML::RSS->new->parse($cache->cache_feed);
-    my $items = $rss->{items};
-    my $limit = $self->{limit};
-    my $index = 0;
-    my $count = 0;
+    my $cache   = $self->{cache};
+    # my $infeed  = XML::Feed->parse($cache->cache_feed);
+    my $f = $cache->cache_feed;
+    my $infeed  = XML::Feed->parse(\$f);
+    my $outfeed = _empty_copy_of($infeed);
+    my @items   = $infeed->items;
+    my $limit   = $self->{limit};
+    my $index   = 0;
+    my $count   = 0;
     my $title;
 
     defined $name  or $name  = $self->name;
     defined $limit or $limit = 9e99;
 
-    while ($index < @$items) {
-        splice(@$items, $index), last if ++$count > $limit;
-        my $item    = $items->[$index];
+    while ($index < @items) {
+        last if ++$count > $limit;
+        my $item    = $items[$index];
         my $wrapper = RSS::Tree::Item->new($self, $item);
         my $node    = $self->handles($wrapper, $name);
         if ($node && defined $node->name && $node->name eq $name) {
@@ -161,19 +181,20 @@ sub run {
             );
             ++$index;
             defined $title or $title = $node->title;
-        } else {
-            splice @$items, $index, 1;
+            $outfeed->add_entry($item);
         }
     }
 
-    $rss->{channel}{title} = $rss->{channel}{description} =
-        defined $title ? $title : $name;
+    $title = defined $title ? $title : $name;
+    $outfeed->title($title);
+    $outfeed->description($title);
 
     # return $rss->as_string;
-    # The as_string method sometimes returns an <?xml?> document with an
+    # The as_xml method sometimes returns an <?xml?> document with an
     # empty encoding attribute, which breaks some readers.
     # This is a hack to work around that.
-    my $out = $rss->as_string;
+    # (Is this still needed after moving to XML::Feed?)
+    my $out = $outfeed->as_xml;
     $out =~ s/^(.+encoding=)(['"])\2/$1$2UTF-8$2/;
     return $out;
 
@@ -230,8 +251,8 @@ sub _resolve_element {
 sub _postprocess_item {
     my ($self, $item) = @_;
     $self->postprocess_item($item);
-    $item->set_guid(undef) if !$self->{keep_guid};
-    delete $item->unwrap->{enclosure} if !$self->{keep_enclosure};
+    # $item->set_guid(undef) if !$self->{keep_guid};
+    # delete $item->unwrap->{enclosure} if !$self->{keep_enclosure};
 }
 
 sub postprocess_item {
@@ -293,15 +314,7 @@ sub _download_feed {
 sub _set_content {
     my ($item, $content) = @_;
     return if !defined $content;
-
-    if (exists $item->{content} &&
-        ref $item->{content} eq 'HASH' &&
-        exists $item->{content}{encoded}) {
-        $item->{content}{encoded} = $content;
-    } else {
-        $item->{description} = $content;
-    }
-
+    $item->content(XML::Feed::Content->new({ body => $content }));
 }
 
 

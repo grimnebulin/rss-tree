@@ -60,7 +60,7 @@ sub set_author {
 *set_creator = *set_author;
 
 sub categories {
-    return shift->category;
+    return shift->{item}->category;
 }
 
 sub _uri {

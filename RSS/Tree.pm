@@ -145,7 +145,7 @@ sub _empty_copy_of {
     my ($format, @version) = split / /, $feed->format;
     my $copy = XML::Feed->new($format, @version ? (version => $version[0]) : ());
     for my $field (@FEED_FIELDS) {
-        my $value = $feed->$field;
+        my $value = $feed->$field();
         $copy->$field($value) if defined $value;
     }
     return $copy;

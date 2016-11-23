@@ -32,7 +32,7 @@ sub new {
     if (defined $uri) {
         $uri = URI->new($uri);
         defined $uri->scheme
-            or die "Cannot construct ", __PACKAGE__, " object with a relative URI\n";
+            or die "Cannot construct ", __PACKAGE__, " object with relative URI: $uri\n";
     }
 
     bless {

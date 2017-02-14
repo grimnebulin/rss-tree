@@ -96,7 +96,7 @@ sub cache_item {
     return $self->_cache(
         sub { $render->($item) },
         $self->{item_seconds},
-        'items', $item->link || $item->guid
+        'items', $item->link || $item->id
     );
 }
 
@@ -209,7 +209,7 @@ sub _do {
     return $self->{parent}->_do(
         $self->{parent}{item_seconds},
         'items',
-        $self->{item}->link || $self->{item}->guid,
+        $self->{item}->link || $self->{item}->id,
         $sub
     );
 }

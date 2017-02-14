@@ -42,7 +42,17 @@ sub link {
 
 sub set_link {
     my ($self, $link) = @_;
-    $self->link($link);
+    $self->{item}->link($link);
+    return $self;
+}
+
+sub id {
+    return shift->{item}->id;
+}
+
+sub set_id {
+    my ($self, $id) = @_;
+    $self->{item}->id($id);
     return $self;
 }
 
@@ -135,7 +145,7 @@ RSS::Tree::Item - Represents a single item from an RSS feed
 
     my $title   = $item->title;
     my $link    = $item->link;
-    my $guid    = $item->guid;
+    my $id      = $item->id;
     my $author  = $item->author;
     my $creator = $item->creator;
 
@@ -169,7 +179,7 @@ See that class's documentation for details.
 
 =item $item->title
 =item $item->link
-=item $item->guid
+=item $item->id
 =item $item->author
 =item $item->creator
 =item $item->categories
@@ -185,7 +195,7 @@ field (which may be a string or an array reference) directly.
 
 =item $item->set_title($new_title)
 =item $item->set_link($new_link)
-=item $item->set_guid($new_guid)
+=item $item->set_id($new_id)
 =item $item->set_author($new_author)
 =item $item->set_creator($new_creator)
 =item $item->set_categories(@new_categories)

@@ -101,8 +101,11 @@ sub uri {
 
 sub description {
     my $self = shift;
-    $self->{description} = $self->_new_page($self->{item}->content->body)
-        if !exists $self->{description};
+    if (!exists $self->{description}) {
+        my $content = $self->{item}->content->body;
+        $content = "<div>$content</div>" if $self->{parent}{wrap_content};
+        $self->{description} = $self->_new_page($content);
+    }
     return $self->{description};
 }
 

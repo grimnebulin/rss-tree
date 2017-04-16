@@ -54,7 +54,7 @@ sub new {
     my $self = $class->SUPER::new($param->('name', 'title'));
 
     $self->{$_} = $param->($_) for qw(
-        feed limit keep_enclosure keep_guid autoclean autoresolve
+        feed limit keep_enclosure keep_guid autoclean autoresolve wrap_content
     );
 
     if (exists $param{agent}) {
@@ -120,6 +120,10 @@ sub AUTOCLEAN {
 
 sub AUTORESOLVE {
     return 1;
+}
+
+sub WRAP_CONTENT {
+    return;
 }
 
 sub CACHE_DIR {
@@ -526,6 +530,19 @@ then autocleaning happens before autoresolving.
 
 The default value is C<1>.
 
+=item wrap_content
+
+If this parameter is true, then the content of items processed by this
+tree will be wrapped with a C<"E<lt>divE<gt>">/C<"E<lt>/divE<gt>">
+pair before being parsed as HTML and returned by the C<content> method
+of C<RSS::Tree::HtmlDocument>.
+
+The default value is false.
+
+The only known reason to set this flag is to preserve the position of
+HTML comments, which otherwise might be rearranged by
+C<HTML::TreeBuilder>.
+
 =back
 
 It is convenient not to have to write a constructor for every subclass
@@ -560,6 +577,8 @@ uppercased.  Specifically:
 =item AUTOCLEAN
 
 =item AUTORESOLVE
+
+=item WRAP_CONTENT
 
 =back
 

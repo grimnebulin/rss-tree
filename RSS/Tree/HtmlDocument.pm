@@ -97,7 +97,10 @@ sub _tree {
     my $self = shift;
     return $self->{tree} ||= do {
         require HTML::TreeBuilder::XPath;
-        my $tree = HTML::TreeBuilder::XPath->new(ignore_unknown => 0);
+        my $tree = HTML::TreeBuilder::XPath->new(
+            ignore_unknown => 0,
+            store_comments => 1,
+        );
         $tree->parse($self->_content);
         $tree->eof;
         $self->{exposed} = 1;

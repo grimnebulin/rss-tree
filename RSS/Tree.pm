@@ -310,6 +310,8 @@ sub _set_content {
     my ($item, $content) = @_;
     return if !defined $content;
     $item->content(XML::Feed::Content->new({ body => $content }));
+    $item->{entry}{description} = $content
+        if ref $item eq 'XML::Feed::Entry::Format::RSS';
 }
 
 

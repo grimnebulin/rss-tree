@@ -121,7 +121,7 @@ sub _render_tree {
 sub _render {
     return join "", map {
         _is_html_element($_)
-            ? $_->as_HTML("", undef, { })
+            ? $_->as_HTML('<>&', undef, { })
             : $_
     } @_;
 }

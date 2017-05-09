@@ -188,11 +188,10 @@ sub run {
     $outfeed->title($title);
     $outfeed->description($title);
 
-    # return $rss->as_string;
     # The as_xml method sometimes returns an <?xml?> document with an
     # empty encoding attribute, which breaks some readers.
     # This is a hack to work around that.
-    # (Is this still needed after moving to XML::Feed?)
+
     my $out = $outfeed->as_xml;
     $out =~ s/^(.+encoding=)(['"])\2/$1$2UTF-8$2/;
     return $out;

@@ -258,7 +258,7 @@ sub postprocess_item {
 }
 
 sub write_programs {
-    my ($self, %opt) = @_;
+    my ($self, %options) = @_;
     my $perl;
 
     require File::Spec;
@@ -271,7 +271,7 @@ sub write_programs {
 
     defined $perl or die "No appropriate perl binary found in PATH\n";
 
-    $self->_write_program(ref $self, $perl, exists $opt{'use'} ? $opt{'use'} : ());
+    $self->_write_program(ref $self, $perl, %options);
 
 }
 

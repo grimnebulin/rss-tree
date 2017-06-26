@@ -185,9 +185,11 @@ sub _children {
 }
 
 sub _write_program {
-    my ($self, $tree_class, $perl, @use_class) = @_;
+    my ($self, $tree_class, $perl, %options) = @_;
 
-    $_->_write_program($tree_class, $perl, @use_class) for $self->_children;
+    require Data::Dumper;
+
+    $_->_write_program($tree_class, $perl, %options) for $self->_children;
 
     return if !defined $self->{name};
 
@@ -196,16 +198,31 @@ sub _write_program {
     open my $fh, '>', $filename
         or die "Can't open file $filename for writing: $!\n";
 
+    my $params;
+
+    if (defined(my $init = $options{init})) {
+        ref $options{init} eq 'HASH' or die "init parameter must be a hash\n";
+        $params = substr _dump($options{init}), 1, -1;
+    } else {
+        $params = "";
+    }
+
+    my $name = _dump($self->{name});
+
     print $fh "#!$perl -CO\n",
-              "# <your extra initialization here>\n",
-              "use ", @use_class ? $use_class[0] : $tree_class, ";\n",
+              "use ", $options{use} // $tree_class, ";\n",
               "use strict;\n\n",
               "print qq(Content-Type: text/xml\\n\\n), ",
-              "$tree_class->new->run('$self->{name}');\n";
+              "$tree_class->new($params)->run($name);\n";
     close $fh;
 
-    chmod 0744, $filename;
+    chmod $options{mode} // 0744, $filename;
 
+}
+
+sub _dump {
+    require Data::Dumper;
+    return Data::Dumper->new([ shift ])->Terse(1)->Indent(0)->Quotekeys(0)->Dump;
 }
 
 sub _trim {

@@ -201,7 +201,7 @@ sub _write_program {
     my $params;
 
     if (defined(my $init = $options{init})) {
-        ref $options{init} eq 'HASH' or die "init parameter must be a hash\n";
+        ref $options{init} eq 'HASH' or die "init parameter must be a hash";
         $params = substr _dump($options{init}), 1, -1;
     } else {
         $params = "";

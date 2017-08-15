@@ -157,10 +157,9 @@ sub _empty_copy_of {
 
 sub run {
     my ($self, $name) = @_;
-    my $cache   = $self->{cache};
-    # my $infeed  = XML::Feed->parse($cache->cache_feed);
-    my $f = $cache->cache_feed;
-    my $infeed  = XML::Feed->parse(\$f);
+    my $cache = $self->{cache};
+    $self->clean_feed(my $source = $cache->cache_feed);
+    my $infeed  = XML::Feed->parse(\$source);
     my $outfeed = _empty_copy_of($infeed);
     my $limit   = $self->{limit};
     my $count   = 0;
@@ -196,6 +195,10 @@ sub run {
     $out =~ s/^(.+encoding=)(['"])\2/$1$2UTF-8$2/;
     return $out;
 
+}
+
+sub clean_feed {
+    # no-op
 }
 
 sub _render {

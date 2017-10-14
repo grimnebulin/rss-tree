@@ -28,6 +28,7 @@ use XML::Feed;
 use parent qw(RSS::Tree::Node);
 use strict;
 
+our $VERSION = 1.00;
 
 my $DEFAULT_ITEM_CACHE_SECONDS = 60 * 60 * 24;
 

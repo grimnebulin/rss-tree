@@ -1,0 +1,6 @@
+Revision history for Perl extension RSS::Tree.
+
+0.01  Sat Sep 30 13:49:40 2017
+	- original version; created by h2xs 1.23 with options
+		-X -n RSS::Tree
+

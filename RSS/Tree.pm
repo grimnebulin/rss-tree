@@ -158,7 +158,9 @@ sub _empty_copy_of {
 sub run {
     my ($self, $name) = @_;
     my $cache = $self->{cache};
+
     $self->clean_feed(my $source = $cache->cache_feed);
+
     my $infeed  = XML::Feed->parse(\$source);
     my $outfeed = _empty_copy_of($infeed);
     my $limit   = $self->{limit};
@@ -636,6 +638,16 @@ C<$root-E<gt>run('baz')> returns the feed from which all items except
 those handled by the "baz" node have been removed; and
 C<$root-E<gt>run('foo')> and C<$root-E<gt>run()> return all items
 except those handled by the "foo" node.
+
+=item $tree->clean_feed($xml_feed_text)
+
+This method is called just after an XML feed is downloaded; the feed
+text is passed as the sole argument.  The method may modify the feed
+text by reference in-place, if desired.  The default implementation
+does nothing.
+
+This method is probably useful only if a site is delivering broken
+XML--for example, invalid entities.
 
 =item $tree->decode_response($response, $uri)
 

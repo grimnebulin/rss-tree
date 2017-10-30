@@ -65,6 +65,12 @@ sub add {
     return $self;
 }
 
+sub clear {
+    my $self = shift;
+    @{ $self->{children} } = ();
+    return $self;
+}
+
 sub test {
     my ($self, $item) = @_;
     return !$self->{test} || $self->{test}->($item);
@@ -302,6 +308,10 @@ Returns the root node of the tree of which C<$node> is a part.
 Adds the elements of C<@child>, each of which should be a
 C<RSS::Tree::Node> object, to the list of this node's child nodes.
 The parent of node is set to C<$node>.  Returns C<$node>.
+
+=item $node->clear
+
+Removes all child elements and returns C<$node>.
 
 =item $node->test($item)
 

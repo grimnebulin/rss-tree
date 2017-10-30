@@ -55,7 +55,7 @@ sub new {
     my $self = $class->SUPER::new($param->('name', 'title'));
 
     $self->{$_} = $param->($_) for qw(
-        feed limit keep_enclosure keep_guid autoclean autoresolve wrap_content
+        feed limit autoclean autoresolve wrap_content
     );
 
     if (exists $param{agent}) {
@@ -105,14 +105,6 @@ sub AGENT_ID {
 
 sub AGENT_CONFIG {
     return undef;
-}
-
-sub KEEP_ENCLOSURE {
-    return 1;
-}
-
-sub KEEP_GUID {
-    return 0;
 }
 
 sub AUTOCLEAN {
@@ -217,19 +209,25 @@ sub _render {
 
 sub _clean_output {
     my $self = shift;
-    return grep {
-        !RSS::Tree::HtmlDocument::_is_html_element($_) || (
-            $self->clean_element($_), $_->tag ne 'script'
-        )
-    } @_;
+    for my $obj (@_) {
+        if (Scalar::Util::blessed($obj) && $obj->isa('RSS::Tree::HtmlDocument')) {
+            $self->clean_element($_) for grep ref, $obj->guts;
+        } elsif (RSS::Tree::HtmlDocument->_is_html_element($obj)) {
+            $self->clean_element($_);
+        }
+    }
+    return @_;
 }
 
 sub _resolve_output {
     my ($self, $item, @elems) = @_;
-    my $follow = $self->{autoresolve} eq 'follow';
+    my $follow = $self->{autoresolve} && $self->{autoresolve} eq 'follow';
     for my $elem (@elems) {
-        $elem = $self->_resolve_element($item, $elem->clone, $follow)
-            if RSS::Tree::HtmlDocument::_is_html_element($elem);
+        if (Scalar::Util::blessed($elem) && $elem->isa('RSS::Tree::HtmlDocument')) {
+            $self->_resolve_element($item, $_, $follow) for grep ref, $elem->guts;
+        } elsif (RSS::Tree::HtmlDocument::_is_html_element($elem)) {
+            $self->_resolve_element($item, $elem, $follow);
+        }
     }
     return @elems;
 }
@@ -248,15 +246,11 @@ sub _resolve_element {
     $self->_resolve_element($item, $_, $follow)
         for grep ref, $elem->content_list;
 
-    return $elem;
-
 }
 
 sub _postprocess_item {
     my ($self, $item) = @_;
     $self->postprocess_item($item);
-    # $item->set_guid(undef) if !$self->{keep_guid};
-    # delete $item->unwrap->{enclosure} if !$self->{keep_enclosure};
 }
 
 sub postprocess_item {
@@ -477,16 +471,6 @@ The default value is C<""> (the empty string).  If undefined, no
 explicit user-agent will be set, and so the default agent supplied by
 the C<LWP::UserAgent> module will be used.
 
-=item keep_enclosure
-
-If false, each RSS item processed by the object will be stripped of
-its "enclosure" field.  Defaults to true.
-
-=item keep_guid
-
-If false, each RSS item processed by the object will be stripped of
-its "guid" field.  Defaults to false.
-
 =item autoclean
 
 A boolean flag.  If true, then all C<HTML::Element> objects returned
@@ -574,10 +558,6 @@ uppercased.  Specifically:
 =item AGENT_ID
 
 =item AGENT_CONFIG
-
-=item KEEP_ENCLOSURE
-
-=item KEEP_GUID
 
 =item AUTOCLEAN
 

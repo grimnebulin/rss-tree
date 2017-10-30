@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>RSS::Tree test feed</title>
+    <link>https://github.com/grimnebulin/rss-tree</link>
+    <description>A Perl framework that allows one to filter, transform, and split the contents of RSS feeds.</description>
+    <language>en-us</language>
+    <item>
+      <title>Item 1</title>
+      <link>https://github.com/grimnebulin/rss-tree</link>
+      <description><![CDATA[
+        <a href="href.html">anchor</a>
+        <img src="foo.jpg">
+        <iframe src="bar"></iframe>
+        <embed src="baz"></embed>
+        <input type="image" src="submit.png" alt="submit">
+        <map name="map">
+          <area shape="rect" coords="0,0,1,1" href="rectangle.html">
+        </map>
+      ]]></description>
+      <pubDate>Sun, 15 Oct 2017 08:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

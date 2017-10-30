@@ -1,41 +1,34 @@
 package TestAgent;
 
+use File::Spec;
 use HTTP::Response;
+use URI;
 use XML::RSS;
 use strict;
 
 
 sub new {
-    my ($class, @items) = @_;
-    bless \@items, $class;
+    my ($class, $dir, $base_url) = @_;
+    bless { dir => $dir, base_url => URI->new($base_url) }, $class;
 }
 
 sub get {
     my ($self, $url) = @_;
-    return HTTP::Response->new(200, undef, [], $self->_make_rss);
+    $url = URI->new($url);
+    my $rel = $url->rel($self->{base_url});
+    return _404() if $rel == $url || $rel !~ /^[-\w.]+\z/;
+    my $path = File::Spec->catfile($self->{dir}, $rel);
+    if (open my $fh, '<', $path) {
+        local $/;
+        my $content = <$fh>;
+        return HTTP::Response->new(200, undef, undef, $content);
+    } else {
+        return _404();
+    }
 }
 
-sub _make_rss {
-    my $self = shift;
-
-    my $rss = XML::RSS->new(version => '2.0');
-
-    $rss->channel(
-        title       => 'test',
-        link        => 'test://link',
-        description => 'test',
-    );
-
-    for my $item (@$self) {
-        $rss->add_item(
-            link        => 'test://item',
-            title       => 'test',
-            description => $item,
-        );
-    }
-
-    return $rss->as_string;
-
+sub _404 {
+    HTTP::Response->new(404);
 }
 
 

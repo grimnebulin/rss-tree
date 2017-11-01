@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <hannel-cay>
+    <itle-tay>RSS::Tree test feed</itle-tay>
+    <ink-lay>https://github.com/grimnebulin/rss-tree</ink-lay>
+    <escription-day>A Perl framework that allows one to filter, transform, and split the contents of RSS feeds.</escription-day>
+    <anguage-lay>en-us</anguage-lay>
+    <item>
+      <itle-tay>Item 1</itle-tay>
+      <ink-lay>https://github.com/grimnebulin/rss-tree</ink-lay>
+      <escription-day>yz-xay</escription-day>
+      <ubDate-pay>Sun, 15 Oct 2017 08:00:00 GMT</ubDate-pay>
+    </item>
+  </hannel-cay>
+</rss>

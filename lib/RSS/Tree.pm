@@ -649,10 +649,11 @@ special handling is needed only for some of them.
 This method does nothing, but a subclass may override it to perform
 any desired postprocessing on C<$item> before it is rendered.
 
-=item $tree->write_programs([ use => $module ])
+=item $tree->write_programs([ dir => $dir, use => $module ])
 
 Descends recursively through the tree.  For each node in the tree
-whose name is defined, a file is written in the current directory
+whose name is defined, a file is written to the directory named by the
+C<$dir> parameter (if supplied, or to the current directory otherwise)
 whose name is obtained by appending ".pl" to the name of the node.
 The file contains a short Perl program which emits the subset of the
 items in the source feed that are matched by that particular node.

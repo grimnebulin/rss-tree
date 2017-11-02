@@ -193,16 +193,16 @@ sub _children {
 sub _write_program {
     my ($self, $tree_class, $perl, %options) = @_;
 
-    require Data::Dumper;
-
     $_->_write_program($tree_class, $perl, %options) for $self->_children;
 
     return if !defined $self->{name};
 
-    my $filename = "$self->{name}.pl";
+    require File::Spec;
 
-    open my $fh, '>', $filename
-        or die "Can't open file $filename for writing: $!\n";
+    my $path = File::Spec->catfile($options{dir} // '.', "$self->{name}.pl");
+
+    open my $fh, '>', $path
+        or die "Can't open file $path for writing: $!\n";
 
     my $params;
 
@@ -220,9 +220,10 @@ sub _write_program {
               "use strict;\n\n",
               "print qq(Content-Type: text/xml\\n\\n), ",
               "$tree_class->new($params)->run($name);\n";
+
     close $fh;
 
-    chmod $options{mode} // 0744, $filename;
+    chmod $options{mode} // 0744, $path;
 
 }
 

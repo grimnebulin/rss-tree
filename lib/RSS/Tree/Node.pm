@@ -1,6 +1,6 @@
 package RSS::Tree::Node;
 
-# Copyright 2013-2016 Sean McAfee
+# Copyright 2013-2017 Sean McAfee
 
 # This file is part of RSS::Tree.
 
@@ -321,22 +321,24 @@ test, meaning that the item will be handled by this node or one of its
 descendants.
 
 The default implementation returns true, unless one of the
-C<match_title>, C<match_author>, or C<match_creator> methods have been
-called.  In that case, it returns true if the item's title, author, or
-creator, respectively, match the regular expression that was passed to
-that method.  Those attributes of the item are trimmed of leading and
+C<match_title>, C<match_author>, C<match_creator>, or
+C<match_category> methods have been called.  In that case, it returns
+true if the item's title, author, creator, or any of its categories,
+respectively, match the regular expression that was passed to that
+method.  Those attributes of the item are trimmed of leading and
 trailing whitespace before being tested by the regex.  If more than
 one of the aforementioned methods have been called, the last such
 method determines the behavior of the C<test> method.
 
 This default behavior is a convenience for the common case of testing
-an item's title, author, or creator.  For other kinds of tests, a
-subclass of C<RSS::Tree::Node> must be created that overrides the
-C<test> method.
+an item's title, author, creator, or categories.  For other kinds of
+tests, a subclass of C<RSS::Tree::Node> must be created that overrides
+the C<test> method.
 
 =item $node->match_title($regex)
 =item $node->match_author($regex)
 =item $node->match_creator($regex)
+=item $node->match_category($regex)
 
 See the description of the C<test> method for details.  These methods
 all return C<$node>.

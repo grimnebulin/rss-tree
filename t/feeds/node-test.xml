@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>RSS::Tree test feed</title>
+    <link>https://github.com/grimnebulin/rss-tree</link>
+    <description>A Perl framework that allows one to filter, transform, and split the contents of RSS feeds.</description>
+    <language>en-us</language>
+    <item>
+      <title>Item 1</title>
+      <author>Kirth Gersen</author>
+      <link>https://github.com/grimnebulin/rss-tree</link>
+      <description>Test item #1</description>
+      <pubDate>Sun, 15 Oct 2017 08:00:00 GMT</pubDate>
+      <categories>
+        <category>irascible</category>
+        <category>tenacious</category>
+        <category>foolhardy</category>
+      </categories>
+    </item>
+    <item>
+      <title>Item 2</title>
+      <link>https://github.com/grimnebulin/rss-tree</link>
+      <description>Test item #2</description>
+      <pubDate>Sun, 15 Oct 2017 08:01:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Item 3</title>
+      <link>https://github.com/grimnebulin/rss-tree</link>
+      <description>Test item #3</description>
+      <pubDate>Sun, 15 Oct 2017 08:02:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
